@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import SearchBar from "./SearchBar";
 import StatsSlider from "./StatsSlider";
 
+
 function Hero() {
   const words = ["Job", "Talent", "Career"];
   const [text, setText] = useState("");

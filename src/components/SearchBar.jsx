@@ -24,10 +24,10 @@ function SearchBar() {
         {/* Button */}
         <button
           className="bg-blue-600 hover:bg-blue-700 text-white 
-                     px-6 md:px-8 py-3 md:py-4 
+                     px-8 md:px-12 py-3 md:py-4 
                      rounded-xl md:rounded-full 
-                     text-base md:text-lg font-semibold 
-                     transition w-full md:w-auto"
+                     text-base md:text-xl font-semibold 
+                     transition w-fit "
         >
           Search
         </button>

@@ -1,7 +1,7 @@
 function Footer() {
   return (
     <footer className="bg-white border-t mt-20">
-      <div className="max-w-7xl mx-auto px-6 py-14 grid grid-cols-1 md:grid-cols-4 gap-10">
+      <div className="max-w-9xl mx-auto px-6 py-14 grid grid-cols-1 md:grid-cols-4 gap-10">
         
         {/* Brand + Social */}
         <div>

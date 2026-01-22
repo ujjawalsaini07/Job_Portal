@@ -1,4 +1,4 @@
-import DashboardLayout from "../../components/layout/DashboardLayout";
+import DashboardLayout from "../../components/layoutDashboard/DashboardLayout";
 import useAuthStore from "../../store/auth.store";
 const CandidateDashboard = () => {
   const { user, logout } = useAuthStore();

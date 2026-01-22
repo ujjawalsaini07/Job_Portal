@@ -3,9 +3,10 @@ import { NavLink } from "react-router-dom";
 const Sidebar = ({ user }) => {  
 
   
-  const MenuItem = ({ label, path = "#" }) => (
+  const MenuItem = ({ label, path = "#",end=false }) => (
     <NavLink
       to={path}
+      end={end}
       className={({ isActive }) =>
         `block px-4 py-3 rounded-lg font-medium transition-all ${
           isActive
@@ -34,26 +35,26 @@ const Sidebar = ({ user }) => {
         {user.role === "CANDIDATE" && (
           <>
             <MenuItem label="Dashboard" path="/dashboard" />
-            <MenuItem label="My Resume" path="/resume" />
-            <MenuItem label="Job Matches" path="/jobMatch"/>
-            <MenuItem label="Applications" path="/applications"/>
+            <MenuItem label="My Resume" path="/dashboard/resume" />
+            <MenuItem label="Job Matches" path="/dashboard/jobMatch"/>
+            <MenuItem label="Applications" path="/dashboard/applications"/>
           </>
         )}
 
         {user.role === "RECRUITER" && (
           <>
-            <MenuItem label="Dashboard" path="/dashboard" />
-            <MenuItem label="Post a Job" path="/postJob"/>
-            <MenuItem label="Pending Applicants" path="/pending"/>
+            <MenuItem label="Dashboard" path="/dashboard" end={true} />
+            <MenuItem label="Post a Job" path="/dashboard/postJob"/>
+            <MenuItem label="Pending Applicants" path="/dashboard/pending"/>
           </>
         )}
 
         {user.role === "ADMIN" && (
           <>
-            <MenuItem label="Dashboard" path="/dashboard" />
-            <MenuItem label="Manage Users" path="/manageUsers" />
-            <MenuItem label="Manage Jobs" path="/manageJobs" />
-            <MenuItem label="Analytics" path="/analytics"/>
+            <MenuItem label="Dashboard" path="/dashboard/dashboard" />
+            <MenuItem label="Manage Users" path="/dashboard/manageUsers" />
+            <MenuItem label="Manage Jobs" path="/dashboard/manageJobs" />
+            <MenuItem label="Analytics" path="/dashboard/analytics"/>
           </>
         )}
       </nav>

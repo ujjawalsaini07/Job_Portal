@@ -3,6 +3,10 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import authRoutes from "./routes/auth.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
+import recruiterRoutes from "./routes/recruiter.routes.js";
+import { protect } from "./middlewares/auth.middleware.js";
+import { authorize } from "./middlewares/role.middleware.js";
+
 
 const app = express();
 
@@ -22,9 +26,14 @@ app.use((req,res,next) => {
   next();
 })
 
-
-app.use("/api/v1/admin", adminRoutes);  // admin 
-
 app.use("/api/v1/auth", authRoutes);
+
+app.use(protect); // ROUTES BELOW ARE PROTECTED 
+
+app.use("/api/v1/admin",authorize('ADMIN'),adminRoutes);  
+
+app.use("/api/v1/recruiter" ,authorize('RECRUITER'),recruiterRoutes)
+
+
 
 export default app;

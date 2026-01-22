@@ -4,20 +4,12 @@ import {
   toggleBlockUser,
   getAdminStats,
 } from "../controllers/admin-controllers/admin.controller.js";
-import { protect } from "../middlewares/admin-data-routes/auth.middleware.js";
-import { authorize } from "../middlewares/admin-data-routes/role.middleware.js";
-
 const router = express.Router();
 
-router.get("/users", protect, authorize("ADMIN"), getAllUsers);
+router.get("/users", getAllUsers);
 
-router.patch(
-  "/users/:userId/block",
-  protect,
-  authorize("ADMIN"),
-  toggleBlockUser,
-);
+router.patch("/users/:userId/block", toggleBlockUser);
 
-router.get("/stats", protect, authorize("ADMIN"), getAdminStats);
+router.get("/stats", getAdminStats);
 
 export default router;

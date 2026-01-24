@@ -1,7 +1,30 @@
-import express from "express";
-import { addJob } from "../controllers/recruiter.controller.js";
-const router = express.Router();
+import e from "express";
+import {
+  getMyCompanyProfile,
+  createCompanyProfile,
+  updateCompanyProfile,
+  uploadCompanyLogo,
+  uploadCompanyBanner,
+  getVerificationStatus,
+  getCompanyProfileById,
+} from "../controllers/recruiter.controller.js";
 
-router.post("/job-post", addJob);
+const recruiterRouter = e.Router();
 
-export default router;
+// Company Profile
+recruiterRouter.get("/profile", getMyCompanyProfile);
+recruiterRouter.post("/profile", createCompanyProfile);
+recruiterRouter.put("/profile", updateCompanyProfile);
+
+// Company Media
+recruiterRouter.post("/profile/logo", uploadCompanyLogo);
+recruiterRouter.post("/profile/banner", uploadCompanyBanner);
+
+// Verification
+recruiterRouter.get("/verification-status", getVerificationStatus);
+
+// Public Company Profile
+recruiterRouter.get("/:id/profile", getCompanyProfileById);
+
+
+export default recruiterRouter;

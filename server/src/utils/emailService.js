@@ -14,7 +14,7 @@ export const sendVerificationEmail = async (email, token) => {
   const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
 
   await transporter.sendMail({
-    from: `"Your App" <${process.env.EMAIL_USER}>`,
+    from: `"Smart Hire" <${process.env.EMAIL_USER}>`,
     to: email,
     subject: "Verify your email",
     html: `
@@ -30,7 +30,7 @@ export const sendPasswordResetEmail = async (email, token) => {
   const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
 
   await transporter.sendMail({
-    from: `"Your App" <${process.env.EMAIL_USER}>`,
+    from: `"Smart Hire" <${process.env.EMAIL_USER}>`,
     to: email,
     subject: "Reset your password",
     html: `

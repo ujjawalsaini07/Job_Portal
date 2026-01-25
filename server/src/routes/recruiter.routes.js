@@ -1,4 +1,6 @@
-import e from "express";
+import express from "express";
+import { protect, authorize } from "../middlewares/auth/auth.middleware.js"; // Import your auth
+import { uploadCompanyImage, handleMulterError } from "../middlewares/upload/upload.middleware.js"; // Import new multer config
 import {
   getMyCompanyProfile,
   createCompanyProfile,
@@ -6,25 +8,37 @@ import {
   uploadCompanyLogo,
   uploadCompanyBanner,
   getVerificationStatus,
-  getCompanyProfileById,
+  getPublicCompanyProfile
 } from "../controllers/recruiter.controller.js";
 
-const recruiterRouter = e.Router();
+const recruiterRouter = express.Router();
 
-// Company Profile
+
+recruiterRouter.get("/:id/profile", getPublicCompanyProfile);
+// Apply protection to all routes
+recruiterRouter.use(protect);
+recruiterRouter.use(authorize('recruiter')); // Optional: Ensure only recruiters access
+
+// Profile Routes
 recruiterRouter.get("/profile", getMyCompanyProfile);
 recruiterRouter.post("/profile", createCompanyProfile);
 recruiterRouter.put("/profile", updateCompanyProfile);
 
-// Company Media
-recruiterRouter.post("/profile/logo", uploadCompanyLogo);
-recruiterRouter.post("/profile/banner", uploadCompanyBanner);
+// Media Upload Routes (Inject Middleware Here)
+recruiterRouter.post(
+  "/profile/logo", 
+  uploadCompanyImage, 
+  handleMulterError, 
+  uploadCompanyLogo
+);
 
-// Verification
+recruiterRouter.post(
+  "/profile/banner", 
+  uploadCompanyImage, 
+  handleMulterError, 
+  uploadCompanyBanner
+);
+
 recruiterRouter.get("/verification-status", getVerificationStatus);
-
-// Public Company Profile
-recruiterRouter.get("/:id/profile", getCompanyProfileById);
-
 
 export default recruiterRouter;

@@ -4,7 +4,13 @@ import fs from "fs";
 
 // Ensure upload directories exist
 const createUploadDirs = () => {
-  const dirs = ["./uploads/resumes", "./uploads/videos", "./uploads/portfolio"];
+  const dirs = [
+    "./uploads/resumes", 
+    "./uploads/videos", 
+    "./uploads/portfolio",
+    "./uploads/company-images" // Added company images directory here
+  ];
+  
   dirs.forEach((dir) => {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
@@ -12,15 +18,17 @@ const createUploadDirs = () => {
   });
 };
 
+// Initialize directories immediately
 createUploadDirs();
 
-// Storage configuration for resumes
+// --- STORAGE CONFIGURATIONS ---
+
+// 1. Resumes
 const resumeStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, "./uploads/resumes");
   },
   filename: (req, file, cb) => {
-    // Create unique filename: userId_timestamp_originalname
     const uniqueSuffix = `${req.user.id}_${Date.now()}`;
     const ext = path.extname(file.originalname);
     const nameWithoutExt = path.basename(file.originalname, ext);
@@ -28,7 +36,7 @@ const resumeStorage = multer.diskStorage({
   },
 });
 
-// Storage configuration for video resumes
+// 2. Videos
 const videoStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, "./uploads/videos");
@@ -41,7 +49,7 @@ const videoStorage = multer.diskStorage({
   },
 });
 
-// Storage configuration for portfolio files
+// 3. Portfolio Files
 const portfolioStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, "./uploads/portfolio");
@@ -54,25 +62,35 @@ const portfolioStorage = multer.diskStorage({
   },
 });
 
-// File filter for resumes (PDF, DOC, DOCX)
+// 4. Company Images (Logos/Banners)
+const companyImageStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    // Directory is now guaranteed to exist by createUploadDirs()
+    cb(null, "./uploads/company-images");
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = `${req.user.id}_${Date.now()}`;
+    const ext = path.extname(file.originalname);
+    const nameWithoutExt = path.basename(file.originalname, ext);
+    cb(null, `${nameWithoutExt}_${uniqueSuffix}${ext}`);
+  },
+});
+
+// --- FILE FILTERS ---
+
 const resumeFileFilter = (req, file, cb) => {
   const allowedMimes = [
     "application/pdf",
     "application/msword",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   ];
-
   if (allowedMimes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(
-      new Error("Invalid file type. Only PDF, DOC, and DOCX are allowed."),
-      false
-    );
+    cb(new Error("Invalid file type. Only PDF, DOC, and DOCX are allowed."), false);
   }
 };
 
-// File filter for videos (MP4, AVI, MOV, WebM)
 const videoFileFilter = (req, file, cb) => {
   const allowedMimes = [
     "video/mp4",
@@ -80,18 +98,13 @@ const videoFileFilter = (req, file, cb) => {
     "video/quicktime",
     "video/webm",
   ];
-
   if (allowedMimes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(
-      new Error("Invalid file type. Only MP4, AVI, MOV, and WebM are allowed."),
-      false
-    );
+    cb(new Error("Invalid file type. Only MP4, AVI, MOV, and WebM are allowed."), false);
   }
 };
 
-// File filter for portfolio (images, PDFs, videos)
 const portfolioFileFilter = (req, file, cb) => {
   const allowedMimes = [
     "image/jpeg",
@@ -102,45 +115,51 @@ const portfolioFileFilter = (req, file, cb) => {
     "video/mp4",
     "video/webm",
   ];
-
   if (allowedMimes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(
-      new Error(
-        "Invalid file type. Only images, PDFs, and videos are allowed."
-      ),
-      false
-    );
+    cb(new Error("Invalid file type. Only images, PDFs, and videos are allowed."), false);
   }
 };
 
-// Multer upload instances
+const imageFileFilter = (req, file, cb) => {
+  const allowedMimes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+  if (allowedMimes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error("Invalid file type. Only JPG, PNG, GIF, and WEBP allowed."), false);
+  }
+};
+
+// --- MULTER INSTANCES (EXPORTS) ---
+
 export const uploadResume = multer({
   storage: resumeStorage,
   fileFilter: resumeFileFilter,
-  limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
-  },
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
 }).single("resume");
 
 export const uploadVideo = multer({
   storage: videoStorage,
   fileFilter: videoFileFilter,
-  limits: {
-    fileSize: 50 * 1024 * 1024, // 50MB limit
-  },
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
 }).single("video");
 
 export const uploadPortfolio = multer({
   storage: portfolioStorage,
   fileFilter: portfolioFileFilter,
-  limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
-  },
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
 }).single("portfolioFile");
 
-// Error handling middleware for multer
+export const uploadCompanyImage = multer({
+  storage: companyImageStorage,
+  fileFilter: imageFileFilter,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+}).single("image");
+
+// --- UTILITIES ---
+
+// Error handling middleware
 export const handleMulterError = (err, req, res, next) => {
   if (err instanceof multer.MulterError) {
     if (err.code === "LIMIT_FILE_SIZE") {
@@ -162,12 +181,11 @@ export const handleMulterError = (err, req, res, next) => {
   next();
 };
 
-// Utility function to delete file
+// Delete file utility
 export const deleteFile = (filePath) => {
   return new Promise((resolve, reject) => {
     fs.unlink(filePath, (err) => {
       if (err && err.code !== "ENOENT") {
-        // ENOENT means file doesn't exist, which is okay
         reject(err);
       } else {
         resolve();

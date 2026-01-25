@@ -40,3 +40,7 @@ coverage/
 .vscode/
 *.swp
 *.swo
+
+
+# ---- upload dir ---- 
+uploads

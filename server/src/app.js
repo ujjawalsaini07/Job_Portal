@@ -13,7 +13,7 @@ import { fileURLToPath } from "url";
 import authRoutes from "./routes/auth.routes.js";
 import userRouter from "./routes/user.routes.js";
 import jobseekerRoutes from "./routes/jobseeker.routes.js";
-// import recruiterRoutes from "./routes/recruiter.routes.js";
+import recruiterRoutes from "./routes/recruiter.routes.js";
 // import adminJobRoutes from "./routes/adminJob.routes.js";
 // import adminRecruiterRoutes from "./routes/adminRecruiter.routes.js";
 // import applicationRouter from "./routes/applications.routes.js";
@@ -59,7 +59,7 @@ app.use("/api/v1/auth", authRoutes);  // auth routes
 
 app.use("/api/v1/users", userRouter); // user routes
 app.use("/api/v1/jobseekers", jobseekerRoutes); // jobseeker routes
-// app.use("/api/v1/recruiters", recruiterRoutes); // recruiter routes
+app.use("/api/v1/recruiters", recruiterRoutes); // recruiter routes
 // app.use("/api/v1/admin/recruiters", adminRecruiterRoutes); // adminrecruiter routes
 // app.use("/api/v1/admin/jobs", adminJobRoutes); // admin job routes
 // app.use("/api/v1/jobs", jobRoutes); // job routes

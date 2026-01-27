@@ -1,58 +1,53 @@
 import express from "express";
 import { protect, authorize } from "../middlewares/auth/auth.middleware.js";
 import {
-  getAllSkills,
-  searchSkills,
-  createSkill,
-  updateSkill,
-  deleteSkill,
-} from "../controllers/skills.controller.js";
+  getAllCategories,
+  createCategory,
+  updateCategory,
+  deleteCategory,
+} from "../controllers/jobcategories.controller.js";
 
-const skillsRouter = express.Router();
+const jobCategoryRouter = express.Router();
 
 // -------------------------------------------------------------------------
 // Public Routes
 // Accessible by anyone (even without login)
 // -------------------------------------------------------------------------
 
-// @desc    Get all skills
+// @desc    Get all categories (supports query params: ?view=tree, ?parentId=..., ?q=...)
 // @access  Public
-skillsRouter.get("/", getAllSkills);
-
-// @desc    Search skills
-// @access  Public
-skillsRouter.get("/search", searchSkills);
+jobCategoryRouter.get("/", getAllCategories);
 
 // -------------------------------------------------------------------------
 // Protected Routes
 // Require Login + 'admin' Role
 // -------------------------------------------------------------------------
 
-// @desc    Create skill
+// @desc    Create category
 // @access  Private (Admin)
-skillsRouter.post(
+jobCategoryRouter.post(
   "/",
   protect,
   authorize("admin"),
-  createSkill
+  createCategory
 );
 
-// @desc    Update skill
+// @desc    Update category
 // @access  Private (Admin)
-skillsRouter.put(
+jobCategoryRouter.put(
   "/:id",
   protect,
   authorize("admin"),
-  updateSkill
+  updateCategory
 );
 
-// @desc    Delete skill
+// @desc    Delete category
 // @access  Private (Admin)
-skillsRouter.delete(
+jobCategoryRouter.delete(
   "/:id",
   protect,
   authorize("admin"),
-  deleteSkill
+  deleteCategory
 );
 
-export default skillsRouter;
+export default jobCategoryRouter;

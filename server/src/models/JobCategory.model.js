@@ -289,4 +289,4 @@ JobCategorySchema.pre(
 JobCategorySchema.set("toJSON", { virtuals: true });
 JobCategorySchema.set("toObject", { virtuals: true });
 
-export default mongoose.model("JobCategory", JobCategory);
+export default mongoose.model("JobCategory", JobCategorySchema);

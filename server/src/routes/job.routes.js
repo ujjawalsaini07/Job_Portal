@@ -1,4 +1,4 @@
-import e from "express";
+import express from "express";
 import {
   getAllJobs,
   searchJobs,
@@ -11,24 +11,90 @@ import {
   getMyJobs,
   trackJobView,
 } from "../controllers/job.controller.js";
-const jobRouter = e.Router();
+import { protect, authorize } from "../middlewares/auth/auth.middleware.js";
 
-// Public jobs
+const jobRouter = express.Router();
+
+// ============================================
+// PUBLIC ROUTES (No authentication required)
+// ============================================
+
+/**
+ * @route   GET /api/v1/jobs
+ * @desc    Get all active jobs with pagination and filters
+ * @access  Public
+ */
 jobRouter.get("/", getAllJobs);
+
+/**
+ * @route   GET /api/v1/jobs/search
+ * @desc    Search jobs with advanced filters
+ * @access  Public
+ */
 jobRouter.get("/search", searchJobs);
-jobRouter.get("/recommended", getRecommendedJobs);
+
+/**
+ * @route   GET /api/v1/jobs/:id
+ * @desc    Get job details by ID
+ * @access  Public
+ */
 jobRouter.get("/:id", getJobById);
 
-// Recruiter actions
-jobRouter.post("/", createJob);
-jobRouter.put("/:id", updateJob);
-jobRouter.delete("/:id", deleteJob);
-jobRouter.patch("/:id/close", closeJob);
-
-// Recruiter jobs
-jobRouter.get("/my-jobs", getMyJobs);
-
-// Analytics
+/**
+ * @route   POST /api/v1/jobs/:id/view
+ * @desc    Track job view (can be authenticated or anonymous)
+ * @access  Public
+ */
 jobRouter.post("/:id/view", trackJobView);
+
+// ============================================
+// JOB SEEKER ROUTES (Authentication required)
+// ============================================
+
+/**
+ * @route   GET /api/v1/jobs/recommended
+ * @desc    Get recommended jobs based on job seeker profile
+ * @access  Private (Job Seeker)
+ */
+jobRouter.get("/recommended", protect, authorize("jobseeker"), getRecommendedJobs);
+
+// ============================================
+// RECRUITER ROUTES (Authentication required)
+// ============================================
+
+/**
+ * @route   GET /api/v1/jobs/my-jobs
+ * @desc    Get all jobs posted by the recruiter
+ * @access  Private (Recruiter)
+ */
+jobRouter.get("/my-jobs", protect, authorize("recruiter"), getMyJobs);
+
+/**
+ * @route   POST /api/v1/jobs
+ * @desc    Create a new job posting
+ * @access  Private (Recruiter - Verified)
+ */
+jobRouter.post("/", protect, authorize("recruiter"), createJob);
+
+/**
+ * @route   PUT /api/v1/jobs/:id
+ * @desc    Update job posting (owner only)
+ * @access  Private (Recruiter - Owner)
+ */
+jobRouter.put("/:id", protect, authorize("recruiter"), updateJob);
+
+/**
+ * @route   DELETE /api/v1/jobs/:id
+ * @desc    Delete job posting (owner only)
+ * @access  Private (Recruiter - Owner)
+ */
+jobRouter.delete("/:id", protect, authorize("recruiter"), deleteJob);
+
+/**
+ * @route   PATCH /api/v1/jobs/:id/close
+ * @desc    Close or mark job as filled (owner only)
+ * @access  Private (Recruiter - Owner)
+ */
+jobRouter.patch("/:id/close", protect, authorize("recruiter"), closeJob);
 
 export default jobRouter;

@@ -43,3 +43,39 @@ const startServer = async () => {
 };
 
 startServer();
+
+// 2. ADD THIS GRACEFUL SHUTDOWN LOGIC AT THE END
+const exitHandler = () => {
+  if (server) {
+    server.close(() => {
+      console.log("Server closed");
+      process.exit(1);
+    });
+  } else {
+    process.exit(1);
+  }
+};
+
+const unexpectedErrorHandler = (error) => {
+  console.error("Unexpected error:", error);
+  exitHandler();
+};
+
+// Handle uncaught errors
+process.on("uncaughtException", unexpectedErrorHandler);
+process.on("unhandledRejection", unexpectedErrorHandler);
+
+// Handle kill signals (Ctrl+C or Docker stop)
+process.on("SIGTERM", () => {
+  console.log("SIGTERM received");
+  if (server) {
+    server.close(() => {
+      console.log("Server closed");
+      // Close MongoDB connection
+      mongoose.connection.close(false, () => {
+        console.log("MongoDB connection closed");
+        process.exit(0);
+      });
+    });
+  }
+});

@@ -7,6 +7,7 @@ import { fileURLToPath } from "url";
 import helmet from "helmet";
 import { rateLimit } from "express-rate-limit";
 import mongoSanitize from "express-mongo-sanitize";
+import xss from "xss-clean";
 
 import authRoutes from "./routes/auth.routes.js";
 import userRouter from "./routes/user.routes.js";
@@ -57,6 +58,16 @@ app.use(express.urlencoded({ limit: "10mb", extended: true }));
 app.use(cookieParser());
 
 app.use(mongoSanitize());
+app.use(xss());
+
+// health check api 
+app.get("/health", (req, res) => {
+  res.status(200).json({ 
+    success: true, 
+    message: "Server is healthy", 
+    timestamp: new Date().toISOString() 
+  });
+});
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 

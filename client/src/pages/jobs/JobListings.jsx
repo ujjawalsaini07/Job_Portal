@@ -47,10 +47,6 @@ const JobListings = () => {
       { value: 'remote', label: 'Remote' },
       { value: 'hybrid', label: 'Hybrid' },
       { value: 'onsite', label: 'On-site' },
-      { value: 'new-york', label: 'New York' },
-      { value: 'san-francisco', label: 'San Francisco' },
-      { value: 'london', label: 'London' },
-      { value: 'berlin', label: 'Berlin' },
     ],
     experienceLevel: [
       { value: 'entry', label: 'Entry Level' },
@@ -98,12 +94,12 @@ const JobListings = () => {
 
       const response = await publicApi.getAllJobs(params);
       
-      setJobs(response.data.jobs || []);
+      setJobs(response.data || []);
       setPagination({
-        currentPage: response.data.pagination?.currentPage || 1,
-        totalPages: response.data.pagination?.totalPages || 1,
-        totalJobs: response.data.pagination?.totalJobs || 0,
-        limit: response.data.pagination?.limit || 12,
+        currentPage: response.currentPage || 1,
+        totalPages: response.totalPages || 1,
+        totalJobs: response.totalJobs || 0,
+        limit: response.limit || 12, // limit might not be in response, use current or default
       });
     } catch (error) {
       console.error('Error fetching jobs:', error);

@@ -2142,27 +2142,196 @@ PATCH /api/v1/admin/jobs/bulk/approve
 
 ### **3.4 Skills Management**
 
-#### 3.4.1 Create Skill
+Skills can be associated with jobs and job seekers. The system supports categorization and search functionality for skills.
 
+---
+
+#### 3.4.1 Get All Skills
+```http
+GET /api/v1/skills
+```
+
+**Description:** Retrieve all skills with optional filtering by category.
+
+**Access:** Public (No authentication required)
+
+**Query Parameters:**
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `category` | String | No | - | Filter by skill category: `technical`, `soft-skill`, `tool`, `language`, `framework`, `other` |
+| `includeInactive` | Boolean | No | `false` | Include inactive skills (set to `true` to show all) |
+
+**Request Examples:**
+
+1. **Get all active skills:**
+```http
+GET /api/v1/skills
+```
+
+2. **Get skills by category:**
+```http
+GET /api/v1/skills?category=technical
+```
+
+3. **Get all skills including inactive:**
+```http
+GET /api/v1/skills?includeInactive=true
+```
+
+4. **Get technical skills including inactive:**
+```http
+GET /api/v1/skills?category=framework&includeInactive=true
+```
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "count": 25,
+  "data": [
+    {
+      "_id": "65f1234567890abcdef12345",
+      "name": "javascript",
+      "displayName": "Javascript",
+      "category": "language",
+      "isActive": true,
+      "createdAt": "2026-01-15T10:00:00.000Z",
+      "updatedAt": "2026-01-15T10:00:00.000Z"
+    },
+    {
+      "_id": "65f1234567890abcdef12346",
+      "name": "react",
+      "displayName": "React",
+      "category": "framework",
+      "isActive": true,
+      "createdAt": "2026-01-15T10:05:00.000Z",
+      "updatedAt": "2026-01-15T10:05:00.000Z"
+    },
+    {
+      "_id": "65f1234567890abcdef12347",
+      "name": "communication",
+      "displayName": "Communication",
+      "category": "soft-skill",
+      "isActive": true,
+      "createdAt": "2026-01-15T10:10:00.000Z",
+      "updatedAt": "2026-01-15T10:10:00.000Z"
+    }
+  ]
+}
+```
+
+**Error Response (500):**
+```json
+{
+  "success": false,
+  "message": "Error fetching skills",
+  "error": "Internal server error"
+}
+```
+
+---
+
+#### 3.4.2 Search Skills
+```http
+GET /api/v1/skills/search
+```
+
+**Description:** Search for skills using text search. Results are ranked by relevance.
+
+**Access:** Public (No authentication required)
+
+**Query Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `q` | String | Yes | Search term for skill name |
+| `includeInactive` | Boolean | No | Include inactive skills (default: false) |
+
+**Request Examples:**
+
+1. **Search for "java":**
+```http
+GET /api/v1/skills/search?q=java
+```
+
+2. **Search including inactive skills:**
+```http
+GET /api/v1/skills/search?q=python&includeInactive=true
+```
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "count": 3,
+  "data": [
+    {
+      "_id": "65f1234567890abcdef12345",
+      "name": "javascript",
+      "displayName": "Javascript",
+      "category": "language",
+      "isActive": true,
+      "score": 1.5,
+      "createdAt": "2026-01-15T10:00:00.000Z",
+      "updatedAt": "2026-01-15T10:00:00.000Z"
+    },
+    {
+      "_id": "65f1234567890abcdef12348",
+      "name": "java",
+      "displayName": "Java",
+      "category": "language",
+      "isActive": true,
+      "score": 1.2,
+      "createdAt": "2026-01-15T10:15:00.000Z",
+      "updatedAt": "2026-01-15T10:15:00.000Z"
+    }
+  ]
+}
+```
+
+**Error Response (400 - Missing Search Term):**
+```json
+{
+  "success": false,
+  "message": "Please provide a search term using the 'q' query parameter"
+}
+```
+
+**Error Response (500):**
+```json
+{
+  "success": false,
+  "message": "Error searching skills",
+  "error": "Internal server error"
+}
+```
+
+---
+
+#### 3.4.3 Create Skill
 ```http
 POST /api/v1/skills
 ```
 
-**Description:** Create a new skill for the platform.
+**Description:** Create a new skill or retrieve existing one if it already exists. Only admins can create skills.
+
+**Access:** Private (Admin only)
+
+**Headers:**
+```
+Authorization: Bearer <admin_access_token>
+```
 
 **Request Body:**
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `name` | String | Yes | Skill name (unique) |
-| `category` | String | No | Skill category |
-| `description` | String | No | Skill description (max 500 chars) |
+| `name` | String | Yes | Skill name (max 100 characters, will be stored in lowercase) |
+| `category` | String | No | Skill category: `technical`, `soft-skill`, `tool`, `language`, `framework`, `other` (default: `other`) |
 
 **Request Example:**
 ```json
 {
   "name": "TypeScript",
-  "category": "Programming Languages",
-  "description": "Typed superset of JavaScript"
+  "category": "language"
 }
 ```
 
@@ -2170,43 +2339,104 @@ POST /api/v1/skills
 ```json
 {
   "success": true,
-  "message": "Skill created successfully",
+  "message": "Skill created (or retrieved if existing)",
   "data": {
-    "skill": {
-      "_id": "65f1234567890abcdef12345",
-      "name": "TypeScript",
-      "category": "Programming Languages",
-      "description": "Typed superset of JavaScript",
-      "createdAt": "2026-01-29T17:00:00.000Z"
-    }
+    "_id": "65f1234567890abcdef12349",
+    "name": "typescript",
+    "displayName": "Typescript",
+    "category": "language",
+    "isActive": true,
+    "createdAt": "2026-01-29T18:00:00.000Z",
+    "updatedAt": "2026-01-29T18:00:00.000Z"
   }
 }
 ```
 
-**Error Response (400):**
+**Error Response (400 - Missing Name):**
 ```json
 {
   "success": false,
-  "message": "Skill already exists"
+  "message": "Skill name is required"
+}
+```
+
+**Error Response (400 - Invalid Category):**
+```json
+{
+  "success": false,
+  "message": "Error creating skill",
+  "error": "invalid-category is not a valid skill category"
+}
+```
+
+**Error Response (400 - Name Too Long):**
+```json
+{
+  "success": false,
+  "message": "Error creating skill",
+  "error": "Skill name cannot exceed 100 characters"
+}
+```
+
+**Error Response (401 - Unauthorized):**
+```json
+{
+  "success": false,
+  "message": "Not authorized to access this route"
+}
+```
+
+**Error Response (403 - Forbidden):**
+```json
+{
+  "success": false,
+  "message": "User role admin is required to access this route"
+}
+```
+
+**Error Response (500):**
+```json
+{
+  "success": false,
+  "message": "Error creating skill",
+  "error": "Internal server error"
 }
 ```
 
 ---
 
-#### 3.4.2 Update Skill
-
+#### 3.4.4 Update Skill
 ```http
 PUT /api/v1/skills/:id
 ```
 
-**Description:** Update an existing skill.
+**Description:** Update an existing skill. Only admins can update skills.
 
-**Request Body:**
+**Access:** Private (Admin only)
+
+**Headers:**
+```
+Authorization: Bearer <admin_access_token>
+```
+
+**URL Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `id` | String | Yes | Skill ObjectId |
+
+**Request Body:** (All fields optional)
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | String | No | Skill name (max 100 characters, will be stored in lowercase) |
+| `category` | String | No | Skill category: `technical`, `soft-skill`, `tool`, `language`, `framework`, `other` |
+| `isActive` | Boolean | No | Active status |
+
+**Request Example:**
 ```json
 {
   "name": "TypeScript Advanced",
-  "category": "Programming Languages",
-  "description": "Advanced TypeScript programming"
+  "category": "language",
+  "isActive": true
 }
 ```
 
@@ -2216,29 +2446,100 @@ PUT /api/v1/skills/:id
   "success": true,
   "message": "Skill updated successfully",
   "data": {
-    "skill": {
-      "_id": "65f1234567890abcdef12345",
-      "name": "TypeScript Advanced",
-      "category": "Programming Languages",
-      "description": "Advanced TypeScript programming"
-    }
+    "_id": "65f1234567890abcdef12349",
+    "name": "typescript advanced",
+    "displayName": "Typescript Advanced",
+    "category": "language",
+    "isActive": true,
+    "createdAt": "2026-01-29T18:00:00.000Z",
+    "updatedAt": "2026-01-29T19:00:00.000Z"
   }
+}
+```
+
+**Error Response (404 - Not Found):**
+```json
+{
+  "success": false,
+  "message": "Skill not found"
+}
+```
+
+**Error Response (400 - Duplicate Name):**
+```json
+{
+  "success": false,
+  "message": "A skill with this name already exists"
+}
+```
+
+**Error Response (400 - Invalid Category):**
+```json
+{
+  "success": false,
+  "message": "Error updating skill",
+  "error": "invalid-category is not a valid skill category"
+}
+```
+
+**Error Response (400 - Name Too Long):**
+```json
+{
+  "success": false,
+  "message": "Error updating skill",
+  "error": "Skill name cannot exceed 100 characters"
+}
+```
+
+**Error Response (401 - Unauthorized):**
+```json
+{
+  "success": false,
+  "message": "Not authorized to access this route"
+}
+```
+
+**Error Response (403 - Forbidden):**
+```json
+{
+  "success": false,
+  "message": "User role admin is required to access this route"
+}
+```
+
+**Error Response (500):**
+```json
+{
+  "success": false,
+  "message": "Error updating skill",
+  "error": "Internal server error"
 }
 ```
 
 ---
 
-#### 3.4.3 Delete Skill
-
+#### 3.4.5 Delete Skill
 ```http
 DELETE /api/v1/skills/:id
 ```
 
-**Description:** Delete a skill from the platform.
+**Description:** Delete a skill from the platform. Skills that are in use by jobs cannot be deleted. Only admins can delete skills.
+
+**Access:** Private (Admin only)
+
+**Headers:**
+```
+Authorization: Bearer <admin_access_token>
+```
+
+**URL Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `id` | String | Yes | Skill ObjectId |
 
 **Request Example:**
 ```http
-DELETE /api/v1/skills/65f1234567890abcdef12345
+DELETE /api/v1/skills/65f1234567890abcdef12349
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
@@ -2250,41 +2551,362 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 }
 ```
 
-**Error Response (409):**
+**Error Response (404 - Not Found):**
 ```json
 {
   "success": false,
-  "message": "Skill is in use and cannot be deleted"
+  "message": "Skill not found"
+}
+```
+
+**Error Response (409 - Skill In Use):**
+```json
+{
+  "success": false,
+  "message": "Skill is in use by 15 job(s) and cannot be deleted"
+}
+```
+
+**Error Response (401 - Unauthorized):**
+```json
+{
+  "success": false,
+  "message": "Not authorized to access this route"
+}
+```
+
+**Error Response (403 - Forbidden):**
+```json
+{
+  "success": false,
+  "message": "User role admin is required to access this route"
+}
+```
+
+**Error Response (500):**
+```json
+{
+  "success": false,
+  "message": "Error deleting skill",
+  "error": "Internal server error"
 }
 ```
 
 ---
 
+### **Skill System Notes:**
+
+**Skill Categories:**
+The system supports the following skill categories:
+- `technical` - Technical skills (e.g., algorithms, data structures)
+- `soft-skill` - Soft skills (e.g., communication, leadership)
+- `tool` - Tools and software (e.g., Git, Docker, Jira)
+- `language` - Programming languages (e.g., JavaScript, Python, Java)
+- `framework` - Frameworks and libraries (e.g., React, Django, Spring)
+- `other` - Miscellaneous skills (default category)
+
+**Name Normalization:**
+- All skill names are automatically stored in lowercase for consistency
+- The `displayName` virtual field returns a properly capitalized version for display purposes
+- When searching or creating skills, case is ignored
+
+**Active/Inactive Status:**
+- Skills can be marked as active (`isActive: true`) or inactive (`isActive: false`)
+- By default, only active skills are returned in queries
+- Use `includeInactive=true` query parameter to include inactive skills
+- Inactive skills are hidden from public views but preserved in the database
+
+**Find or Create Behavior:**
+- The create endpoint uses a "find or create" pattern
+- If a skill with the same name already exists, it returns the existing skill
+- This prevents duplicate skills and makes the API more forgiving
+
+**Search Functionality:**
+- Text search is available via the `/search` endpoint
+- Results are ranked by relevance score
+- Search is case-insensitive
+
+**Deletion Protection:**
+- Skills that are currently associated with jobs cannot be deleted (returns 409 error)
+- This prevents breaking references in the job listings
+- Admins should first reassign or remove the skill from all jobs before deletion
+
+**Example Skills by Category:**
+```json
+{
+  "technical": ["algorithms", "data structures", "system design"],
+  "language": ["javascript", "python", "java", "typescript"],
+  "framework": ["react", "angular", "vue", "django", "spring"],
+  "tool": ["git", "docker", "kubernetes", "jenkins"],
+  "soft-skill": ["communication", "leadership", "teamwork"],
+  "other": ["agile", "scrum"]
+}
+```
+---
+
 ### **3.5 Category Management**
 
-#### 3.5.1 Create Category
+All category management endpoints require admin authentication except for the GET endpoint which is public.
 
+---
+
+#### 3.5.1 Get All Categories
+```http
+GET /api/v1/categories
+```
+
+**Description:** Retrieve job categories with various view options (tree, flat list, parent-only, or subcategories).
+
+**Access:** Public (No authentication required)
+
+**Query Parameters:**
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `view` | String | No | `flat` | View type: `tree` (hierarchical), `parents` (top-level only), or `flat` (all categories) |
+| `parentId` | String | No | - | Get subcategories of a specific parent category ID |
+| `q` | String | No | - | Search term for category name or description |
+| `includeInactive` | Boolean | No | `false` | Include inactive categories (set to `true` to show all) |
+
+**Request Examples:**
+
+1. **Get all categories (flat list):**
+```http
+GET /api/v1/categories
+```
+
+2. **Get hierarchical tree:**
+```http
+GET /api/v1/categories?view=tree
+```
+
+3. **Get only parent categories:**
+```http
+GET /api/v1/categories?view=parents
+```
+
+4. **Get subcategories of a parent:**
+```http
+GET /api/v1/categories?parentId=65f1234567890abcdef12300
+```
+
+5. **Search categories:**
+```http
+GET /api/v1/categories?q=software
+```
+
+6. **Include inactive categories:**
+```http
+GET /api/v1/categories?includeInactive=true
+```
+
+**Success Response (200 - Flat List):**
+```json
+{
+  "success": true,
+  "count": 15,
+  "data": [
+    {
+      "_id": "65f1234567890abcdef12300",
+      "name": "Technology",
+      "description": "Technology and IT related jobs",
+      "icon": "laptop-code",
+      "parentCategory": null,
+      "isActive": true,
+      "createdAt": "2026-01-15T10:00:00.000Z",
+      "updatedAt": "2026-01-15T10:00:00.000Z"
+    },
+    {
+      "_id": "65f1234567890abcdef12301",
+      "name": "Software Development",
+      "description": "Software engineering and development roles",
+      "icon": "code",
+      "parentCategory": {
+        "_id": "65f1234567890abcdef12300",
+        "name": "Technology"
+      },
+      "isActive": true,
+      "createdAt": "2026-01-15T10:05:00.000Z",
+      "updatedAt": "2026-01-15T10:05:00.000Z"
+    },
+    {
+      "_id": "65f1234567890abcdef12302",
+      "name": "Machine Learning",
+      "description": "AI and ML engineering positions",
+      "icon": "brain",
+      "parentCategory": {
+        "_id": "65f1234567890abcdef12300",
+        "name": "Technology"
+      },
+      "isActive": true,
+      "createdAt": "2026-01-15T10:10:00.000Z",
+      "updatedAt": "2026-01-15T10:10:00.000Z"
+    }
+  ]
+}
+```
+
+**Success Response (200 - Tree View):**
+```json
+{
+  "success": true,
+  "count": 3,
+  "data": [
+    {
+      "_id": "65f1234567890abcdef12300",
+      "name": "Technology",
+      "description": "Technology and IT related jobs",
+      "icon": "laptop-code",
+      "isActive": true,
+      "subcategories": [
+        {
+          "_id": "65f1234567890abcdef12301",
+          "name": "Software Development",
+          "description": "Software engineering and development roles",
+          "icon": "code",
+          "isActive": true
+        },
+        {
+          "_id": "65f1234567890abcdef12302",
+          "name": "Machine Learning",
+          "description": "AI and ML engineering positions",
+          "icon": "brain",
+          "isActive": true
+        }
+      ]
+    },
+    {
+      "_id": "65f1234567890abcdef12303",
+      "name": "Marketing",
+      "description": "Marketing and advertising positions",
+      "icon": "megaphone",
+      "isActive": true,
+      "subcategories": [
+        {
+          "_id": "65f1234567890abcdef12304",
+          "name": "Digital Marketing",
+          "description": "Digital marketing roles",
+          "icon": "chart-line",
+          "isActive": true
+        }
+      ]
+    }
+  ]
+}
+```
+
+**Success Response (200 - Parent Categories Only):**
+```json
+{
+  "success": true,
+  "count": 5,
+  "data": [
+    {
+      "_id": "65f1234567890abcdef12300",
+      "name": "Technology",
+      "description": "Technology and IT related jobs",
+      "icon": "laptop-code",
+      "parentCategory": null,
+      "isActive": true,
+      "createdAt": "2026-01-15T10:00:00.000Z",
+      "updatedAt": "2026-01-15T10:00:00.000Z"
+    },
+    {
+      "_id": "65f1234567890abcdef12303",
+      "name": "Marketing",
+      "description": "Marketing and advertising positions",
+      "icon": "megaphone",
+      "parentCategory": null,
+      "isActive": true,
+      "createdAt": "2026-01-15T10:15:00.000Z",
+      "updatedAt": "2026-01-15T10:15:00.000Z"
+    }
+  ]
+}
+```
+
+**Success Response (200 - Search Results):**
+```json
+{
+  "success": true,
+  "count": 2,
+  "data": [
+    {
+      "_id": "65f1234567890abcdef12301",
+      "name": "Software Development",
+      "description": "Software engineering and development roles",
+      "icon": "code",
+      "parentCategory": {
+        "_id": "65f1234567890abcdef12300",
+        "name": "Technology"
+      },
+      "isActive": true,
+      "score": 1.5
+    },
+    {
+      "_id": "65f1234567890abcdef12305",
+      "name": "Software Testing",
+      "description": "QA and testing positions",
+      "icon": "bug",
+      "parentCategory": {
+        "_id": "65f1234567890abcdef12300",
+        "name": "Technology"
+      },
+      "isActive": true,
+      "score": 1.2
+    }
+  ]
+}
+```
+
+**Error Response (500):**
+```json
+{
+  "success": false,
+  "message": "Error fetching categories",
+  "error": "Internal server error"
+}
+```
+
+---
+
+#### 3.5.2 Create Category
 ```http
 POST /api/v1/categories
 ```
 
-**Description:** Create a new job category.
+**Description:** Create a new job category. Only admins can create categories.
+
+**Access:** Private (Admin only)
+
+**Headers:**
+```
+Authorization: Bearer <admin_access_token>
+```
 
 **Request Body:**
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `name` | String | Yes | Category name (unique) |
-| `description` | String | No | Category description (max 1000 chars) |
-| `parentId` | String | No | Parent category ID (for subcategories) |
+| `name` | String | Yes | Category name (unique, max 100 characters) |
+| `description` | String | No | Category description (max 500 characters) |
 | `icon` | String | No | Icon name or URL |
+| `parentCategory` | String | No | Parent category ObjectId (for creating subcategories) |
 
-**Request Example:**
+**Request Example (Parent Category):**
+```json
+{
+  "name": "Technology",
+  "description": "Technology and IT related jobs",
+  "icon": "laptop-code"
+}
+```
+
+**Request Example (Subcategory):**
 ```json
 {
   "name": "Machine Learning",
-  "description": "Roles related to ML and AI",
-  "parentId": "65f1234567890abcdef12300",
-  "icon": "brain-circuit"
+  "description": "AI and ML engineering positions",
+  "icon": "brain",
+  "parentCategory": "65f1234567890abcdef12300"
 }
 ```
 
@@ -2294,33 +2916,124 @@ POST /api/v1/categories
   "success": true,
   "message": "Category created successfully",
   "data": {
-    "category": {
-      "_id": "65f1234567890abcdef12345",
-      "name": "Machine Learning",
-      "description": "Roles related to ML and AI",
-      "parentId": "65f1234567890abcdef12300",
-      "icon": "brain-circuit",
-      "level": 1
-    }
+    "_id": "65f1234567890abcdef12302",
+    "name": "Machine Learning",
+    "description": "AI and ML engineering positions",
+    "icon": "brain",
+    "parentCategory": "65f1234567890abcdef12300",
+    "isActive": true,
+    "createdAt": "2026-01-29T18:00:00.000Z",
+    "updatedAt": "2026-01-29T18:00:00.000Z"
   }
+}
+```
+
+**Error Response (400 - Duplicate Name):**
+```json
+{
+  "success": false,
+  "message": "Category with this name already exists"
+}
+```
+
+**Error Response (400 - Circular Reference):**
+```json
+{
+  "success": false,
+  "message": "Circular reference detected: Cannot create parent-child loop"
+}
+```
+
+**Error Response (400 - Self Reference):**
+```json
+{
+  "success": false,
+  "message": "A category cannot be its own parent"
+}
+```
+
+**Error Response (400 - Validation Error):**
+```json
+{
+  "success": false,
+  "message": "Category name is required"
+}
+```
+
+**Error Response (400 - Name Too Long):**
+```json
+{
+  "success": false,
+  "message": "Category name cannot exceed 100 characters"
+}
+```
+
+**Error Response (401 - Unauthorized):**
+```json
+{
+  "success": false,
+  "message": "Not authorized to access this route"
+}
+```
+
+**Error Response (403 - Forbidden):**
+```json
+{
+  "success": false,
+  "message": "User role admin is required to access this route"
 }
 ```
 
 ---
 
-#### 3.5.2 Update Category
-
+#### 3.5.3 Update Category
 ```http
 PUT /api/v1/categories/:id
 ```
 
-**Description:** Update an existing category.
+**Description:** Update an existing job category. Only admins can update categories.
+
+**Access:** Private (Admin only)
+
+**Headers:**
+```
+Authorization: Bearer <admin_access_token>
+```
+
+**URL Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `id` | String | Yes | Category ObjectId |
+
+**Request Body:** (All fields optional)
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | String | No | Category name (unique, max 100 characters) |
+| `description` | String | No | Category description (max 500 characters) |
+| `icon` | String | No | Icon name or URL |
+| `parentCategory` | String | No | Parent category ObjectId (set to `null` to make it a parent category) |
+| `isActive` | Boolean | No | Active status |
 
 **Request Example:**
 ```json
 {
   "name": "Machine Learning & AI",
-  "description": "Updated description for ML and AI roles"
+  "description": "Artificial Intelligence and Machine Learning positions",
+  "isActive": true
+}
+```
+
+**Request Example (Change Parent):**
+```json
+{
+  "parentCategory": "65f1234567890abcdef12310"
+}
+```
+
+**Request Example (Make Parent Category):**
+```json
+{
+  "parentCategory": null
 }
 ```
 
@@ -2330,33 +3043,98 @@ PUT /api/v1/categories/:id
   "success": true,
   "message": "Category updated successfully",
   "data": {
-    "category": {
-      "_id": "65f1234567890abcdef12345",
-      "name": "Machine Learning & AI",
-      "description": "Updated description for ML and AI roles"
-    }
+    "_id": "65f1234567890abcdef12302",
+    "name": "Machine Learning & AI",
+    "description": "Artificial Intelligence and Machine Learning positions",
+    "icon": "brain",
+    "parentCategory": "65f1234567890abcdef12300",
+    "isActive": true,
+    "createdAt": "2026-01-29T18:00:00.000Z",
+    "updatedAt": "2026-01-29T19:30:00.000Z"
   }
+}
+```
+
+**Error Response (404 - Not Found):**
+```json
+{
+  "success": false,
+  "message": "Category not found"
+}
+```
+
+**Error Response (400 - Duplicate Name):**
+```json
+{
+  "success": false,
+  "message": "Category with this name already exists"
+}
+```
+
+**Error Response (400 - Circular Reference):**
+```json
+{
+  "success": false,
+  "message": "Circular reference detected: Cannot create parent-child loop"
+}
+```
+
+**Error Response (400 - Self Reference):**
+```json
+{
+  "success": false,
+  "message": "A category cannot be its own parent"
+}
+```
+
+**Error Response (400 - Validation Error):**
+```json
+{
+  "success": false,
+  "message": "Category name cannot exceed 100 characters"
+}
+```
+
+**Error Response (401 - Unauthorized):**
+```json
+{
+  "success": false,
+  "message": "Not authorized to access this route"
+}
+```
+
+**Error Response (403 - Forbidden):**
+```json
+{
+  "success": false,
+  "message": "User role admin is required to access this route"
 }
 ```
 
 ---
 
-#### 3.5.3 Delete Category
-
+#### 3.5.4 Delete Category
 ```http
 DELETE /api/v1/categories/:id
 ```
 
-**Description:** Delete a job category.
+**Description:** Delete a job category. Only admins can delete categories. Categories with subcategories or active jobs cannot be deleted.
 
-**Query Parameters:**
-| Parameter | Type | Required | Default | Description |
-|-----------|------|----------|---------|-------------|
-| `force` | Boolean | No | `false` | Force delete even if category has jobs |
+**Access:** Private (Admin only)
+
+**Headers:**
+```
+Authorization: Bearer <admin_access_token>
+```
+
+**URL Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `id` | String | Yes | Category ObjectId |
 
 **Request Example:**
 ```http
-DELETE /api/v1/categories/65f1234567890abcdef12345?force=false
+DELETE /api/v1/categories/65f1234567890abcdef12302
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
@@ -2368,12 +3146,79 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 }
 ```
 
-**Error Response (409):**
+**Error Response (404 - Not Found):**
 ```json
 {
   "success": false,
-  "message": "Category has subcategories or jobs and cannot be deleted"
+  "message": "Category not found"
 }
+```
+
+**Error Response (400 - Has Subcategories):**
+```json
+{
+  "success": false,
+  "message": "Cannot delete category with subcategories. Delete or reassign subcategories first."
+}
+```
+
+**Error Response (400 - Has Active Jobs):**
+```json
+{
+  "success": false,
+  "message": "Cannot delete category with 15 active job(s). Reassign jobs first."
+}
+```
+
+**Error Response (401 - Unauthorized):**
+```json
+{
+  "success": false,
+  "message": "Not authorized to access this route"
+}
+```
+
+**Error Response (403 - Forbidden):**
+```json
+{
+  "success": false,
+  "message": "User role admin is required to access this route"
+}
+```
+
+---
+
+### **Category Hierarchy Notes:**
+
+**Category Structure:**
+- Categories can have a two-level hierarchy: Parent → Subcategory
+- Parent categories have `parentCategory: null`
+- Subcategories have a valid `parentCategory` ObjectId
+- The system prevents circular references and self-references
+
+**Validation Rules:**
+- Category names must be unique across all categories
+- A category cannot be its own parent
+- Circular references are prevented (e.g., Category A → Category B → Category A)
+- Categories with subcategories cannot be deleted until subcategories are reassigned or deleted
+- Categories with active jobs cannot be deleted until jobs are reassigned
+
+**Active/Inactive Status:**
+- Categories can be marked as active (`isActive: true`) or inactive (`isActive: false`)
+- By default, only active categories are returned in queries
+- Use `includeInactive=true` query parameter to include inactive categories
+- Inactive categories are hidden from public views but preserved in the database
+
+**Example Hierarchy:**
+```
+Technology (Parent)
+├── Software Development (Subcategory)
+├── Machine Learning (Subcategory)
+└── Data Science (Subcategory)
+
+Marketing (Parent)
+├── Digital Marketing (Subcategory)
+└── Content Marketing (Subcategory)
 ```
 
 ---
@@ -2944,70 +3789,101 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ### **4.2 Job Management**
 
 #### 4.2.1 Create Job Posting
-
 ```http
 POST /api/v1/jobs
 ```
 
-**Description:** Create a new job posting (requires verified recruiter account).
+**Description:** Create a new job posting. Requires a verified recruiter account. All jobs are created with `draft` status by default.
 
 **Request Body:**
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `title` | String | Yes | Job title |
-| `description` | String | Yes | Job description |
-| `responsibilities` | Array | No | List of responsibilities |
-| `requirements` | Array | No | List of requirements |
-| `location` | Object | Yes | Job location |
-| `salary` | Object | No | Salary range |
-| `employmentType` | String | Yes | `Full-Time`, `Part-Time`, `Contract`, `Freelance` |
-| `experienceLevel` | String | Yes | `Entry`, `Mid`, `Senior`, `Lead` |
-| `category` | String | Yes | Category ID |
-| `requiredSkills` | Array | Yes | Array of skill IDs |
-| `benefits` | Array | No | List of benefits |
-| `applicationDeadline` | String | No | ISO date string |
+| `title` | String | Yes | Job title (max 200 characters) |
+| `description` | String | Yes | Detailed job description (max 5000 characters) |
+| `requiredSkills` | Array | No | Array of Skill ObjectIds |
+| `qualifications` | Array | No | Array of qualification strings (max 500 chars each) |
+| `experienceLevel` | String | Yes | Experience level: `entry`, `mid`, `senior`, `lead`, `executive` |
+| `experienceYears` | Object | No | Experience years range |
+| `experienceYears.min` | Number | No | Minimum years of experience (default: 0) |
+| `experienceYears.max` | Number | No | Maximum years of experience |
+| `education` | Object | No | Education requirements |
+| `education.minDegree` | String | No | Minimum degree: `high-school`, `associate`, `bachelor`, `master`, `doctorate` |
+| `education.preferredFields` | Array | No | Array of preferred field of study strings |
+| `salary` | Object | No | Salary information |
+| `salary.min` | Number | No | Minimum salary |
+| `salary.max` | Number | No | Maximum salary |
+| `salary.currency` | String | No | Currency code (default: USD) |
+| `salary.isVisible` | Boolean | No | Whether to show salary publicly (default: true) |
+| `location` | Object | No | Job location |
+| `location.city` | String | No | City |
+| `location.state` | String | No | State/Province |
+| `location.country` | String | No | Country |
+| `location.isRemote` | Boolean | No | Remote job flag (default: false) |
+| `location.remoteType` | String | No | Remote type: `fully-remote`, `hybrid`, `onsite` (required if isRemote is true) |
+| `employmentType` | String | Yes | Employment type: `full-time`, `part-time`, `contract`, `internship` |
+| `numberOfOpenings` | Number | No | Number of open positions (default: 1, min: 1) |
+| `applicationDeadline` | Date | No | Application deadline (must be in future) |
+| `screeningQuestions` | Array | No | Array of screening question objects |
+| `screeningQuestions[].question` | String | Yes | The screening question (max 500 characters) |
+| `screeningQuestions[].isRequired` | Boolean | No | Whether answer is required (default: false) |
+| `category` | String | No | JobCategory ObjectId |
 
 **Request Example:**
 ```json
 {
   "title": "Senior Full Stack Developer",
-  "description": "We are seeking an experienced full-stack developer...",
-  "responsibilities": [
-    "Design and develop scalable web applications",
-    "Lead technical architecture decisions",
-    "Mentor junior developers"
-  ],
-  "requirements": [
-    "5+ years of full-stack development experience",
-    "Expert knowledge of JavaScript, React, Node.js",
-    "Experience with cloud platforms (AWS/GCP)"
-  ],
-  "location": {
-    "city": "San Francisco",
-    "state": "CA",
-    "country": "USA",
-    "isRemote": true
-  },
-  "salary": {
-    "min": 120000,
-    "max": 180000,
-    "currency": "USD"
-  },
-  "employmentType": "Full-Time",
-  "experienceLevel": "Senior",
-  "category": "65f1234567890abcdef12300",
+  "description": "We are seeking an experienced full-stack developer to join our growing engineering team. You will be responsible for designing and developing scalable web applications, leading technical architecture decisions, and mentoring junior developers.",
   "requiredSkills": [
     "65f1234567890abcdef12301",
     "65f1234567890abcdef12302",
     "65f1234567890abcdef12303"
   ],
-  "benefits": [
-    "Health insurance",
-    "401(k) matching",
-    "Remote work flexibility",
-    "Professional development budget"
+  "qualifications": [
+    "5+ years of full-stack development experience",
+    "Expert knowledge of JavaScript, React, and Node.js",
+    "Experience with cloud platforms (AWS/GCP)",
+    "Strong problem-solving and communication skills"
   ],
-  "applicationDeadline": "2026-03-01T23:59:59.000Z"
+  "experienceLevel": "senior",
+  "experienceYears": {
+    "min": 5,
+    "max": 10
+  },
+  "education": {
+    "minDegree": "bachelor",
+    "preferredFields": ["Computer Science", "Software Engineering", "Information Technology"]
+  },
+  "salary": {
+    "min": 120000,
+    "max": 180000,
+    "currency": "USD",
+    "isVisible": true
+  },
+  "location": {
+    "city": "San Francisco",
+    "state": "CA",
+    "country": "USA",
+    "isRemote": true,
+    "remoteType": "hybrid"
+  },
+  "employmentType": "full-time",
+  "numberOfOpenings": 2,
+  "applicationDeadline": "2026-03-01T23:59:59.000Z",
+  "screeningQuestions": [
+    {
+      "question": "What is your experience with React and Node.js?",
+      "isRequired": true
+    },
+    {
+      "question": "Are you authorized to work in the United States?",
+      "isRequired": true
+    },
+    {
+      "question": "What is your expected salary range?",
+      "isRequired": false
+    }
+  ],
+  "category": "65f1234567890abcdef12300"
 }
 ```
 
@@ -3019,24 +3895,83 @@ POST /api/v1/jobs
   "data": {
     "_id": "65f1234567890abcdef12345",
     "title": "Senior Full Stack Developer",
-    "description": "We are seeking...",
-    "status": "pending-approval",
+    "description": "We are seeking an experienced full-stack developer...",
+    "requiredSkills": [
+      {
+        "_id": "65f1234567890abcdef12301",
+        "name": "JavaScript"
+      },
+      {
+        "_id": "65f1234567890abcdef12302",
+        "name": "React"
+      },
+      {
+        "_id": "65f1234567890abcdef12303",
+        "name": "Node.js"
+      }
+    ],
+    "qualifications": [
+      "5+ years of full-stack development experience",
+      "Expert knowledge of JavaScript, React, and Node.js"
+    ],
+    "experienceLevel": "senior",
+    "experienceYears": {
+      "min": 5,
+      "max": 10
+    },
+    "education": {
+      "minDegree": "bachelor",
+      "preferredFields": ["Computer Science", "Software Engineering"]
+    },
+    "salary": {
+      "min": 120000,
+      "max": 180000,
+      "currency": "USD",
+      "isVisible": true
+    },
+    "location": {
+      "city": "San Francisco",
+      "state": "CA",
+      "country": "USA",
+      "isRemote": true,
+      "remoteType": "hybrid"
+    },
+    "employmentType": "full-time",
+    "numberOfOpenings": 2,
+    "applicationDeadline": "2026-03-01T23:59:59.000Z",
+    "screeningQuestions": [
+      {
+        "question": "What is your experience with React and Node.js?",
+        "isRequired": true,
+        "_id": "65f1234567890abcdef12350"
+      }
+    ],
+    "category": {
+      "_id": "65f1234567890abcdef12300",
+      "name": "Software Development"
+    },
+    "status": "draft",
     "recruiterId": {
-      "_id": "...",
+      "_id": "65f1234567890abcdef12346",
       "name": "John Recruiter",
       "email": "john@techcorp.com"
     },
     "companyId": {
-      "_id": "...",
+      "_id": "65f1234567890abcdef12347",
       "companyName": "Tech Corp",
-      "companyLogo": "/uploads/logos/techcorp.png"
+      "companyLogo": "https://example.com/logo.png",
+      "industry": "Technology"
     },
-    "createdAt": "2026-01-29T18:30:00.000Z"
+    "views": 0,
+    "applicationCount": 0,
+    "isFeatured": false,
+    "createdAt": "2026-01-29T18:30:00.000Z",
+    "updatedAt": "2026-01-29T18:30:00.000Z"
   }
 }
 ```
 
-**Error Response (403):**
+**Error Response (403 - Unverified Recruiter):**
 ```json
 {
   "success": false,
@@ -3044,7 +3979,7 @@ POST /api/v1/jobs
 }
 ```
 
-**Error Response (404):**
+**Error Response (404 - No Recruiter Profile):**
 ```json
 {
   "success": false,
@@ -3052,7 +3987,100 @@ POST /api/v1/jobs
 }
 ```
 
+**Error Response (400 - Validation Error):**
+```json
+{
+  "success": false,
+  "message": "Validation error",
+  "errors": [
+    "Job title is required",
+    "Job description is required",
+    "Experience level is required",
+    "Employment type is required"
+  ]
+}
+```
+
+**Error Response (400 - Invalid Enum Value):**
+```json
+{
+  "success": false,
+  "message": "Validation error",
+  "errors": [
+    "invalid-level is not a valid experience level",
+    "freelance is not a valid employment type"
+  ]
+}
+```
+
+**Error Response (400 - Invalid Salary Range):**
+```json
+{
+  "success": false,
+  "message": "Validation error",
+  "errors": [
+    "Maximum salary must be greater than or equal to minimum salary"
+  ]
+}
+```
+
+**Error Response (400 - Invalid Experience Range):**
+```json
+{
+  "success": false,
+  "message": "Validation error",
+  "errors": [
+    "Maximum experience must be greater than or equal to minimum experience"
+  ]
+}
+```
+
+**Error Response (400 - Missing Remote Type):**
+```json
+{
+  "success": false,
+  "message": "Error creating job posting",
+  "error": "Remote type must be specified for remote jobs"
+}
+```
+
+**Error Response (400 - Invalid Deadline):**
+```json
+{
+  "success": false,
+  "message": "Validation error",
+  "errors": [
+    "Application deadline must be in the future"
+  ]
+}
+```
+
+**Error Response (500):**
+```json
+{
+  "success": false,
+  "message": "Error creating job posting",
+  "error": "Internal server error"
+}
+```
+
+**Notes:**
+- Jobs are always created with `draft` status
+- The following fields are **protected** and cannot be set during creation:
+  - `recruiterId` (automatically set from authenticated user)
+  - `companyId` (automatically set from recruiter's profile)
+  - `status` (always starts as `draft`)
+  - `views`, `applicationCount`
+  - `moderatedBy`, `moderatedAt`, `moderationNotes`
+  - `postedAt`, `closedAt`
+  - `isFeatured` (only admins can set)
+- If `location.isRemote` is `true`, `location.remoteType` is required
+- `applicationDeadline` must be a future date
+- Maximum values must be greater than or equal to minimum values for salary and experience ranges
+
 ---
+
+
 
 #### 4.2.2 Get My Jobs
 
@@ -3117,23 +4145,36 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ---
 
 #### 4.2.3 Update Job Posting
-
 ```http
 PUT /api/v1/jobs/:id
 ```
 
-**Description:** Update a job posting (must be owner).
+**Description:** Update an existing job posting. Only the job owner (recruiter who created it) can update the job. Recruiters can only change status from `draft` to `pending-approval`.
 
-**Request Body:** (Same fields as Create, all optional)
+**URL Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `id` | String | Yes | Job ObjectId |
+
+**Request Body:** (All fields optional, same fields as Create endpoint except protected fields)
+
+**Request Example:**
 ```json
 {
   "title": "Senior Full Stack Developer (Updated)",
-  "description": "Updated job description...",
+  "description": "Updated job description with more details...",
   "salary": {
     "min": 130000,
     "max": 190000,
     "currency": "USD"
-  }
+  },
+  "numberOfOpenings": 3,
+  "screeningQuestions": [
+    {
+      "question": "Updated screening question?",
+      "isRequired": true
+    }
+  ]
 }
 ```
 
@@ -3145,19 +4186,106 @@ PUT /api/v1/jobs/:id
   "data": {
     "_id": "65f1234567890abcdef12345",
     "title": "Senior Full Stack Developer (Updated)",
-    "description": "Updated job description...",
+    "description": "Updated job description with more details...",
+    "salary": {
+      "min": 130000,
+      "max": 190000,
+      "currency": "USD",
+      "isVisible": true
+    },
+    "numberOfOpenings": 3,
+    "status": "draft",
     "updatedAt": "2026-01-29T19:00:00.000Z"
   }
 }
 ```
 
-**Error Response (403):**
+**Submit for Approval Example:**
+```json
+{
+  "status": "pending-approval"
+}
+```
+
+**Submit for Approval Response (200):**
+```json
+{
+  "success": true,
+  "message": "Job posting updated successfully",
+  "data": {
+    "_id": "65f1234567890abcdef12345",
+    "title": "Senior Full Stack Developer",
+    "status": "pending-approval",
+    "updatedAt": "2026-01-29T19:05:00.000Z"
+  }
+}
+```
+
+**Error Response (400 - Invalid Job ID):**
+```json
+{
+  "success": false,
+  "message": "Invalid job ID"
+}
+```
+
+**Error Response (404 - Job Not Found):**
+```json
+{
+  "success": false,
+  "message": "Job not found"
+}
+```
+
+**Error Response (403 - Not Authorized):**
 ```json
 {
   "success": false,
   "message": "You are not authorized to update this job"
 }
 ```
+
+**Error Response (403 - Invalid Status Change):**
+```json
+{
+  "success": false,
+  "message": "You can only submit draft jobs for approval. Other status changes require admin action."
+}
+```
+
+**Error Response (400 - Validation Error):**
+```json
+{
+  "success": false,
+  "message": "Validation error",
+  "errors": [
+    "Job title cannot exceed 200 characters",
+    "Maximum salary must be greater than or equal to minimum salary"
+  ]
+}
+```
+
+**Error Response (500):**
+```json
+{
+  "success": false,
+  "message": "Error updating job posting",
+  "error": "Internal server error"
+}
+```
+
+**Notes:**
+- Only the recruiter who created the job can update it
+- The following fields are **protected** and cannot be updated:
+  - `recruiterId`, `companyId`
+  - `views`, `applicationCount`
+  - `moderatedBy`, `moderatedAt`, `moderationNotes`
+  - `postedAt`, `closedAt`
+  - `isFeatured`
+  - `status` (except draft → pending-approval transition)
+- Recruiters can only change job status from `draft` to `pending-approval`
+- All other status changes (`pending-approval` → `active`, `active` → `closed`, etc.) require admin action
+- All validation rules from the Create endpoint apply
 
 ---
 

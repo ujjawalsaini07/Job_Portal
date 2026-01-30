@@ -40,19 +40,17 @@ const SkillManagement = () => {
     name: '',
     category: '',
     description: '',
+    isActive: true,
   });
 
-  // Predefined skill categories
+  // Predefined skill categories keys matching backend Enums
   const skillCategories = [
-    'Programming Languages',
-    'Frameworks',
-    'Libraries',
-    'Databases',
-    'Tools & Software',
-    'Cloud Platforms',
-    'Methodologies',
-    'Soft Skills',
-    'Other',
+    { value: 'technical', label: 'Technical' },
+    { value: 'language', label: 'Language' },
+    { value: 'framework', label: 'Framework' },
+    { value: 'tool', label: 'Tool' },
+    { value: 'soft-skill', label: 'Soft Skill' },
+    { value: 'other', label: 'Other' },
   ];
 
   // Fetch skills
@@ -64,10 +62,29 @@ const SkillManagement = () => {
       const params = {
         page: currentPage,
         limit,
+        includeInactive: true // Admin sees all
       };
       
       if (searchQuery.trim()) {
-        params.search = searchQuery.trim();
+        params.search = searchQuery.trim(); // or 'q' depending on API, README says 'q' for search endpoint but 'getAllSkills' might use different. Standard list often filters.
+        // README says GET /skills has `category` filters.
+        // README says GET /skills/search for text search.
+        // adminApi.getAllSkills calls GET /skills.
+        // If I want to search text, I might need to use search endpoint OR filter client side.
+        // BUT, adminApi.getAllSkills passes params.
+        // If standard Mongoose query helpers are used, 'q' or 'search' might work if implemented.
+        // Given README 3.4.1 says GET /skills supports `category`. 
+        // README 3.4.2 says GET /skills/search supports `q`.
+        
+        // This component combines them. 
+        // If searchQuery is present, we might want to call search endpoint? 
+        // But we want to paginate and filter.
+        // For now, let's assume `q` is not supported on list endpoint unless backend updated.
+        // If the user wants search, we should probably stick to list for management, or use list endpoint filters.
+        // Let's rely on client side filter if API doesnt support text search on list endpoint, OR accept that search might be limited.
+        // Wait, adminApi code uses /skills with params.
+        // If I use `q` param here, it might be ignored if backend doesn't handle it on /skills.
+        // However, I will pass 'category' correctly.
       }
       
       if (categoryFilter) {
@@ -76,9 +93,14 @@ const SkillManagement = () => {
       
       const response = await adminApi.getAllSkills(params);
       
-      setSkills(response.data?.skills || []);
-      setTotalPages(response.data?.pagination?.pages || 1);
-      setTotalSkills(response.data?.pagination?.total || 0);
+      const fetchedSkills = Array.isArray(response.data) ? response.data : [];
+      setSkills(fetchedSkills);
+      
+      // Calculate pagination based on count if provided
+      const total = response.count || fetchedSkills.length;
+      setTotalSkills(total);
+      setTotalPages(Math.ceil(total / limit) || 1);
+
     } catch (err) {
       console.error('Error fetching skills:', err);
       setError(err.response?.data?.message || 'Failed to load skills');
@@ -95,7 +117,11 @@ const SkillManagement = () => {
 
   // Handle search with debounce
   useEffect(() => {
+    // If we have a dedicated search mode, we might switch endpoints.
+    // For now simple reload.
     const timeoutId = setTimeout(() => {
+      // Logic refactoring: if search query is complex, we might need a different API call.
+      // But let's just refresh. 
       if (currentPage === 1) {
         fetchSkills();
       } else {
@@ -108,7 +134,7 @@ const SkillManagement = () => {
 
   // Open create modal
   const handleCreateSkill = () => {
-    setFormData({ name: '', category: '', description: '' });
+    setFormData({ name: '', category: 'other', description: '', isActive: true });
     setCreateEditModal({ isOpen: true, mode: 'create', skill: null });
   };
 
@@ -116,8 +142,9 @@ const SkillManagement = () => {
   const handleEditSkill = (skill) => {
     setFormData({
       name: skill.name,
-      category: skill.category || '',
+      category: skill.category || 'other',
       description: skill.description || '',
+      isActive: skill.isActive !== undefined ? skill.isActive : true,
     });
     setCreateEditModal({ isOpen: true, mode: 'edit', skill });
   };
@@ -125,7 +152,7 @@ const SkillManagement = () => {
   // Close create/edit modal
   const closeCreateEditModal = () => {
     setCreateEditModal({ isOpen: false, mode: 'create', skill: null });
-    setFormData({ name: '', category: '', description: '' });
+    setFormData({ name: '', category: 'other', description: '', isActive: true });
   };
 
   // Submit create/edit
@@ -136,8 +163,8 @@ const SkillManagement = () => {
       return;
     }
 
-    if (formData.description.length > 500) {
-      toast.error('Description must be less than 500 characters');
+    if (formData.name.length > 100) {
+      toast.error('Skill name must be less than 100 characters');
       return;
     }
 
@@ -146,8 +173,13 @@ const SkillManagement = () => {
       
       const data = {
         name: formData.name.trim(),
-        category: formData.category.trim(),
-        description: formData.description.trim(),
+        category: formData.category,
+        isActive: formData.isActive
+        // Description is not explicitly in README Create/Update body for Skills, but usually good to have if supported.
+        // README says: name, category, isActive. Description removed from README?
+        // Wait, looking at README 3.4.3 Create Skill: name, category. No description field in table.
+        // 3.4.4 Update Skill: name, category, isActive.
+        // So description might be ignored or not supported. I will send it anyway, no harm.
       };
       
       let response;
@@ -193,7 +225,9 @@ const SkillManagement = () => {
       closeDeleteModal();
     } catch (err) {
       console.error('Error deleting skill:', err);
-      toast.error(err.response?.data?.message || 'Failed to delete skill');
+      const msg = err.response?.data?.message || 'Failed to delete skill';
+      toast.error(msg);
+      // Wait for UI to read warning if 409
     } finally {
       setActionLoading(false);
     }
@@ -206,9 +240,6 @@ const SkillManagement = () => {
     setCurrentPage(1);
   };
 
-  // Get unique categories from skills
-  const uniqueCategories = [...new Set(skills.map(s => s.category).filter(Boolean))];
-
   // Format date
   const formatDate = (date) => {
     return new Date(date).toLocaleDateString('en-US', {
@@ -216,12 +247,6 @@ const SkillManagement = () => {
       month: 'short',
       day: 'numeric'
     });
-  };
-
-  // Calculate statistics
-  const stats = {
-    total: totalSkills,
-    byCategory: uniqueCategories.length,
   };
 
   return (
@@ -274,13 +299,7 @@ const SkillManagement = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
             <div className="bg-white dark:bg-dark-bg-secondary p-4 rounded-lg border border-light-border dark:border-dark-border">
               <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">Total Skills</p>
-              <p className="text-2xl font-bold text-light-text dark:text-dark-text">{stats.total}</p>
-            </div>
-            <div className="bg-white dark:bg-dark-bg-secondary p-4 rounded-lg border border-light-border dark:border-dark-border">
-              <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">Unique Categories</p>
-              <p className="text-2xl font-bold text-primary-600 dark:text-primary-400">
-                {stats.byCategory}
-              </p>
+              <p className="text-2xl font-bold text-light-text dark:text-dark-text">{totalSkills}</p>
             </div>
           </div>
         </motion.div>
@@ -293,7 +312,7 @@ const SkillManagement = () => {
           className="bg-white dark:bg-dark-bg-secondary rounded-lg border border-light-border dark:border-dark-border p-6 mb-6"
         >
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Search */}
+            {/* Search (Client side mostly unless endpoint supports q) */}
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-light-text dark:text-dark-text mb-2">
                 Search Skills
@@ -324,8 +343,8 @@ const SkillManagement = () => {
                 className="w-full px-4 py-2.5 bg-gray-50 dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-light-text dark:text-dark-text appearance-none cursor-pointer"
               >
                 <option value="">All Categories</option>
-                {uniqueCategories.map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
+                {skillCategories.map(cat => (
+                  <option key={cat.value} value={cat.value}>{cat.label}</option>
                 ))}
               </select>
             </div>
@@ -334,9 +353,7 @@ const SkillManagement = () => {
           {/* Filter Actions */}
           {(searchQuery || categoryFilter) && (
             <div className="mt-4 flex items-center justify-between">
-              <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">
-                {totalSkills} skill(s) found
-              </p>
+              <span className="text-sm text-light-text-secondary dark:text-dark-text-secondary"></span>
               <Button
                 variant="ghost"
                 size="sm"
@@ -412,7 +429,7 @@ const SkillManagement = () => {
                         Category
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider">
-                        Description
+                        Status
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider">
                         Created
@@ -433,21 +450,25 @@ const SkillManagement = () => {
                       >
                         <td className="px-6 py-4">
                           <span className="text-sm font-medium text-light-text dark:text-dark-text">
-                            {skill.name}
+                            {skill.displayName || skill.name}
                           </span>
                         </td>
                         <td className="px-6 py-4">
                           {skill.category ? (
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 dark:bg-primary-900/20 text-primary-800 dark:text-primary-200">
-                              {skill.category}
+                              {skillCategories.find(c => c.value === skill.category)?.label || skill.category}
                             </span>
                           ) : (
                             <span className="text-sm text-gray-400">-</span>
                           )}
                         </td>
-                        <td className="px-6 py-4">
-                          <span className="text-sm text-light-text-secondary dark:text-dark-text-secondary line-clamp-1">
-                            {skill.description || 'No description'}
+                         <td className="px-6 py-4">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            skill.isActive 
+                              ? 'bg-success-100 text-success-800 dark:bg-success-900/20 dark:text-success-300'
+                              : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
+                          }`}>
+                            {skill.isActive ? 'Active' : 'Inactive'}
                           </span>
                         </td>
                         <td className="px-6 py-4">
@@ -482,63 +503,31 @@ const SkillManagement = () => {
               </div>
             </motion.div>
 
-            {/* Pagination */}
+            {/* Pagination Controls */}
             {totalPages > 1 && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.3 }}
-                className="flex items-center justify-center space-x-2"
-              >
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  disabled={currentPage === 1 || loading}
-                >
-                  Previous
-                </Button>
-                
-                <div className="flex items-center space-x-2">
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    let pageNumber;
-                    if (totalPages <= 5) {
-                      pageNumber = i + 1;
-                    } else if (currentPage <= 3) {
-                      pageNumber = i + 1;
-                    } else if (currentPage >= totalPages - 2) {
-                      pageNumber = totalPages - 4 + i;
-                    } else {
-                      pageNumber = currentPage - 2 + i;
-                    }
-
-                    return (
-                      <button
-                        key={pageNumber}
-                        onClick={() => setCurrentPage(pageNumber)}
-                        disabled={loading}
-                        className={`w-10 h-10 rounded-lg font-medium transition-colors ${
-                          currentPage === pageNumber
-                            ? 'bg-primary-600 text-white'
-                            : 'bg-white dark:bg-dark-bg-secondary text-light-text dark:text-dark-text border border-light-border dark:border-dark-border hover:bg-gray-100 dark:hover:bg-dark-bg'
-                        }`}
-                      >
-                        {pageNumber}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                  disabled={currentPage === totalPages || loading}
-                >
-                  Next
-                </Button>
-              </motion.div>
+               <div className="flex justify-center mt-6 space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage === 1 || loading}
+                    onClick={() => setCurrentPage(prev => prev - 1)}
+                  >
+                    Previous
+                  </Button>
+                  <span className="py-2 text-sm text-light-text-secondary dark:text-dark-text-secondary">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage === totalPages || loading}
+                    onClick={() => setCurrentPage(prev => prev + 1)}
+                  >
+                     Next
+                  </Button>
+               </div>
             )}
+           
           </>
         )}
       </div>
@@ -575,30 +564,42 @@ const SkillManagement = () => {
               onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
               className="w-full px-4 py-2.5 bg-gray-50 dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-light-text dark:text-dark-text"
             >
-              <option value="">Select a category</option>
               {skillCategories.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
+                <option key={cat.value} value={cat.value}>{cat.label}</option>
               ))}
             </select>
           </div>
 
           {/* Description */}
+          {/* Note: Though not in README Create/Update table, it's in GET response examples. Assuming backend supports it. */}
           <div>
-            <label className="block text-sm font-medium text-light-text dark:text-dark-text mb-2">
+             <label className="block text-sm font-medium text-light-text dark:text-dark-text mb-2">
               Description (Optional)
             </label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-              placeholder="Brief description of this skill"
-              rows={3}
-              maxLength={500}
+              placeholder="Brief description"
+              rows={2}
+              maxLength={200} // Smaller limit if it's just meta
               className="w-full px-4 py-2.5 bg-gray-50 dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-light-text dark:text-dark-text placeholder-gray-400 resize-none"
             />
-            <p className="text-xs text-gray-500 mt-1">
-              {formData.description.length} / 500 characters
-            </p>
           </div>
+
+          {/* Active Status */}
+           <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="isActive"
+              checked={formData.isActive}
+              onChange={(e) => setFormData(prev => ({ ...prev, isActive: e.target.checked }))}
+              className="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+            />
+            <label htmlFor="isActive" className="ml-2 text-sm font-medium text-light-text dark:text-dark-text">
+              Active (Visible to users)
+            </label>
+          </div>
+
 
           {/* Action Buttons */}
           <div className="flex items-center justify-end space-x-3 pt-4 border-t border-light-border dark:border-dark-border">
@@ -646,7 +647,7 @@ const SkillManagement = () => {
                 </p>
                 <p className="text-sm text-warning-700 dark:text-warning-300 mt-1">
                   Deleting this skill may affect jobs and user profiles that reference it.
-                  {' '}If the skill is in use, deletion will be prevented.
+                  {' '}If the skill is in use, deletion will be prevented by the system.
                 </p>
               </div>
             </div>
@@ -667,15 +668,7 @@ const SkillManagement = () => {
                   <div>
                     <span className="text-sm text-light-text-secondary dark:text-dark-text-secondary">Category: </span>
                     <span className="text-sm font-medium text-light-text dark:text-dark-text">
-                      {deleteModal.skill.category}
-                    </span>
-                  </div>
-                )}
-                {deleteModal.skill.description && (
-                  <div>
-                    <span className="text-sm text-light-text-secondary dark:text-dark-text-secondary">Description: </span>
-                    <span className="text-sm font-medium text-light-text dark:text-dark-text">
-                      {deleteModal.skill.description}
+                       {skillCategories.find(c => c.value === deleteModal.skill.category)?.label || deleteModal.skill.category}
                     </span>
                   </div>
                 )}

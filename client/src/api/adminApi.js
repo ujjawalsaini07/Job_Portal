@@ -69,8 +69,8 @@ export const adminApi = {
     return response.data;
   },
   
-  rejectJob: async (jobId, reason) => {
-    const response = await api.patch(`/admin/jobs/${jobId}/reject`, { reason });
+  rejectJob: async (jobId, data) => {
+    const response = await api.patch(`/admin/jobs/${jobId}/reject`, data);
     return response.data;
   },
   

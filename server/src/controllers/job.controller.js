@@ -24,10 +24,12 @@ export const getAllJobs = async (req, res) => {
     } = req.query;
 
     // Build filter object
-    const filter = { status: "active" };
+    const filter = { status: "active" }; 
 
     if (experienceLevel) filter.experienceLevel = experienceLevel;
     if (employmentType) filter.employmentType = employmentType;
+    
+    // Location filter
     if (location) {
       filter.$or = [
         { "location.city": new RegExp(location, "i") },
@@ -35,8 +37,20 @@ export const getAllJobs = async (req, res) => {
         { "location.country": new RegExp(location, "i") },
       ];
     }
+    
     if (isRemote === "true") filter["location.isRemote"] = true;
     if (isFeatured === "true") filter.isFeatured = true;
+
+    // 🔥 Exclude expired jobs
+    // This adds a condition: deadline must be either not set OR in the future
+    filter.$and = filter.$and || [];
+    filter.$and.push({
+      $or: [
+        { applicationDeadline: { $exists: false } },
+        { applicationDeadline: null },
+        { applicationDeadline: { $gt: new Date() } },
+      ],
+    });
 
     // Calculate pagination
     const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -356,11 +370,25 @@ export const createJob = async (req, res) => {
       });
     }
 
+    // 🔒 SANITIZE INPUT - Remove protected fields
+    const sanitizedBody = { ...req.body };
+    delete sanitizedBody.recruiterId;
+    delete sanitizedBody.companyId;
+    delete sanitizedBody.views;
+    delete sanitizedBody.applicationCount;
+    delete sanitizedBody.moderatedBy;
+    delete sanitizedBody.moderatedAt;
+    delete sanitizedBody.moderationNotes;
+    delete sanitizedBody.postedAt;
+    delete sanitizedBody.closedAt;
+    delete sanitizedBody.isFeatured; // Only admins should set this
+
     // Create job with recruiter and company information
     const jobData = {
-      ...req.body,
+      ...sanitizedBody,
       recruiterId,
       companyId: recruiterProfile._id,
+      status: "draft", // Always start as draft
     };
 
     const job = await Job.create(jobData);
@@ -432,23 +460,39 @@ export const updateJob = async (req, res) => {
       });
     }
 
-    // Don't allow updating certain fields
-    const {
-      recruiterId: _,
-      companyId: __,
-      views: ___,
-      applicationCount: ____,
-      ...updateData
-    } = req.body;
+    // 🔒 SANITIZE INPUT - Remove ALL protected fields
+    const sanitizedBody = { ...req.body };
+    delete sanitizedBody.recruiterId;
+    delete sanitizedBody.companyId;
+    delete sanitizedBody.views;
+    delete sanitizedBody.applicationCount;
+    delete sanitizedBody.moderatedBy;
+    delete sanitizedBody.moderatedAt;
+    delete sanitizedBody.moderationNotes;
+    delete sanitizedBody.postedAt;
+    delete sanitizedBody.closedAt;
+    delete sanitizedBody.isFeatured;
+    delete sanitizedBody.status; // Handle status separately
 
-    // If job was in draft and being moved to pending-approval, use the method
-    if (job.status === "draft" && updateData.status === "pending-approval") {
-      await job.submitForApproval();
-      delete updateData.status; // Remove from update data as it's handled by the method
+    // ⚠️ Only allow status changes from draft to pending-approval
+   if (req.body.status) {
+      if (job.status === "draft" && req.body.status === "pending-approval") {
+        // Submit: Draft -> Pending
+        await job.submitForApproval();
+      } else if (job.status === "pending-approval" && req.body.status === "draft") {
+        // Withdraw: Pending -> Draft
+        job.status = "draft";
+        // Optionally reset any verification/approval flags if they exist
+      } else if (req.body.status !== job.status) {
+        return res.status(403).json({
+          success: false,
+          message: "You can only toggle between Draft and Pending Approval. Other status changes require admin action.",
+        });
+      }
     }
 
-    // Update job
-    Object.assign(job, updateData);
+    // Update job with sanitized data
+    Object.assign(job, sanitizedBody);
     await job.save();
 
     // Populate the updated job
@@ -471,6 +515,14 @@ export const updateJob = async (req, res) => {
         success: false,
         message: "Validation error",
         errors: messages,
+      });
+    }
+
+    // Handle custom errors from methods (like submitForApproval)
+    if (error.message.includes("Only draft jobs")) {
+      return res.status(400).json({
+        success: false,
+        message: error.message,
       });
     }
 

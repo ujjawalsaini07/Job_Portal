@@ -15,9 +15,7 @@ import { protect, authorize } from "../middlewares/auth/auth.middleware.js";
 
 const jobRouter = express.Router();
 
-// ============================================
-// PUBLIC ROUTES (No authentication required)
-// ============================================
+
 
 /**
  * @route   GET /api/v1/jobs
@@ -34,6 +32,28 @@ jobRouter.get("/", getAllJobs);
 jobRouter.get("/search", searchJobs);
 
 /**
+ * @route   GET /api/v1/jobs/my-jobs
+ * @desc    Get all jobs posted by the recruiter
+ * @access  Private (Recruiter)
+ */
+jobRouter.get("/my-jobs", protect, authorize("recruiter"), getMyJobs);
+
+/**
+ * @route   POST /api/v1/jobs
+ * @desc    Create a new job posting
+ * @access  Private (Recruiter - Verified)
+ */
+jobRouter.post("/", protect, authorize("recruiter"), createJob);
+
+
+/**
+ * @route   GET /api/v1/jobs/recommended
+ * @desc    Get recommended jobs based on job seeker profile
+ * @access  Private (Job Seeker)
+ */
+jobRouter.get("/recommended", protect, authorize("jobseeker"), getRecommendedJobs);
+
+/**
  * @route   GET /api/v1/jobs/:id
  * @desc    Get job details by ID
  * @access  Public
@@ -47,34 +67,7 @@ jobRouter.get("/:id", getJobById);
  */
 jobRouter.post("/:id/view", trackJobView);
 
-// ============================================
-// JOB SEEKER ROUTES (Authentication required)
-// ============================================
 
-/**
- * @route   GET /api/v1/jobs/recommended
- * @desc    Get recommended jobs based on job seeker profile
- * @access  Private (Job Seeker)
- */
-jobRouter.get("/recommended", protect, authorize("jobseeker"), getRecommendedJobs);
-
-// ============================================
-// RECRUITER ROUTES (Authentication required)
-// ============================================
-
-/**
- * @route   GET /api/v1/jobs/my-jobs
- * @desc    Get all jobs posted by the recruiter
- * @access  Private (Recruiter)
- */
-jobRouter.get("/my-jobs", protect, authorize("recruiter"), getMyJobs);
-
-/**
- * @route   POST /api/v1/jobs
- * @desc    Create a new job posting
- * @access  Private (Recruiter - Verified)
- */
-jobRouter.post("/", protect, authorize("recruiter"), createJob);
 
 /**
  * @route   PUT /api/v1/jobs/:id

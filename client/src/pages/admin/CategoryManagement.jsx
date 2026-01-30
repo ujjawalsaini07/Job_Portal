@@ -33,8 +33,9 @@ const CategoryManagement = () => {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    parentId: '',
+    parentCategory: '',
     icon: '',
+    isActive: true,
   });
 
   // Fetch categories
@@ -46,6 +47,7 @@ const CategoryManagement = () => {
       const params = {
         view: 'flat', // flat view to show all categories with level info
         limit: 100, // Get all categories
+        includeInactive: true // Admin should see all
       };
       
       if (searchQuery.trim()) {
@@ -53,7 +55,9 @@ const CategoryManagement = () => {
       }
       
       const response = await adminApi.getAllCategories(params);
-      setCategories(response.data?.categories || []);
+      // API returns { success: true, count: N, data: [...] }
+      // So response.data is the array of categories (per README and axios response structure logic)
+      setCategories(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
       console.error('Error fetching categories:', err);
       setError(err.response?.data?.message || 'Failed to load categories');
@@ -79,7 +83,7 @@ const CategoryManagement = () => {
 
   // Open create modal
   const handleCreateCategory = () => {
-    setFormData({ name: '', description: '', parentId: '', icon: '' });
+    setFormData({ name: '', description: '', parentCategory: '', icon: '', isActive: true });
     setCreateEditModal({ isOpen: true, mode: 'create', category: null });
   };
 
@@ -88,8 +92,10 @@ const CategoryManagement = () => {
     setFormData({
       name: category.name,
       description: category.description || '',
-      parentId: category.parentId || '',
+      // Handle populated object or ID string for parentCategory
+      parentCategory: category.parentCategory?._id || category.parentCategory || '', 
       icon: category.icon || '',
+      isActive: category.isActive !== undefined ? category.isActive : true,
     });
     setCreateEditModal({ isOpen: true, mode: 'edit', category });
   };
@@ -97,7 +103,7 @@ const CategoryManagement = () => {
   // Close create/edit modal
   const closeCreateEditModal = () => {
     setCreateEditModal({ isOpen: false, mode: 'create', category: null });
-    setFormData({ name: '', description: '', parentId: '', icon: '' });
+    setFormData({ name: '', description: '', parentCategory: '', icon: '', isActive: true });
   };
 
   // Submit create/edit
@@ -108,8 +114,8 @@ const CategoryManagement = () => {
       return;
     }
 
-    if (formData.description.length > 1000) {
-      toast.error('Description must be less than 1000 characters');
+    if (formData.description.length > 500) {
+      toast.error('Description must be less than 500 characters');
       return;
     }
 
@@ -120,11 +126,14 @@ const CategoryManagement = () => {
         name: formData.name.trim(),
         description: formData.description.trim(),
         icon: formData.icon.trim(),
+        isActive: formData.isActive
       };
       
-      // Only include parentId if it's not empty
-      if (formData.parentId) {
-        data.parentId = formData.parentId;
+      // Only include parentCategory if it's not empty, otherwise null for root
+      if (formData.parentCategory) {
+        data.parentCategory = formData.parentCategory;
+      } else {
+        data.parentCategory = null; 
       }
       
       let response;
@@ -176,10 +185,7 @@ const CategoryManagement = () => {
       const errorMessage = err.response?.data?.message || 'Failed to delete category';
       toast.error(errorMessage);
       
-      // If error mentions dependencies, don't close modal (let user try force delete)
-      if (!errorMessage.includes('subcategories') && !errorMessage.includes('jobs')) {
-        closeDeleteModal();
-      }
+      // If error mentions dependencies, don't close modal (let user try force delete if relevant)
     } finally {
       setActionLoading(false);
     }
@@ -189,15 +195,16 @@ const CategoryManagement = () => {
   const getParentOptions = (currentCategoryId = null) => {
     if (!currentCategoryId) {
       // For create mode, return all top-level and level-1 categories
-      return categories.filter(cat => cat.level <= 1);
+      return categories.filter(cat => (cat.level || 0) <= 1);
     }
     
     // For edit mode, exclude the category itself and its children
-    return categories.filter(cat => 
-      cat._id !== currentCategoryId && 
-      cat.parentId !== currentCategoryId &&
-      cat.level <= 1
-    );
+    return categories.filter(cat => {
+      const parentId = cat.parentCategory?._id || cat.parentCategory;
+      return cat._id !== currentCategoryId && 
+             parentId !== currentCategoryId &&
+             (cat.level || 0) <= 1;
+    });
   };
 
   // Get indent class based on level
@@ -214,8 +221,8 @@ const CategoryManagement = () => {
   // Calculate statistics
   const stats = {
     total: categories.length,
-    topLevel: categories.filter(c => c.level === 0).length,
-    subcategories: categories.filter(c => c.level > 0).length,
+    topLevel: categories.filter(c => !c.parentCategory).length,
+    subcategories: categories.filter(c => c.parentCategory).length,
   };
 
   return (
@@ -388,7 +395,7 @@ const CategoryManagement = () => {
                       Level
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider">
-                      Icon
+                      Status
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider">
                       Actions
@@ -404,9 +411,9 @@ const CategoryManagement = () => {
                       transition={{ delay: index * 0.02 }}
                       className="hover:bg-gray-50 dark:hover:bg-dark-bg transition-colors"
                     >
-                      <td className={`px-6 py-4 ${getIndentClass(category.level)}`}>
+                      <td className={`px-6 py-4 ${getIndentClass(category.level || 0)}`}>
                         <div className="flex items-center space-x-2">
-                          {category.level > 0 && (
+                          {(category.level || 0) > 0 && (
                             <span className="text-gray-400">└─</span>
                           )}
                           <span className="text-sm font-medium text-light-text dark:text-dark-text">
@@ -421,12 +428,16 @@ const CategoryManagement = () => {
                       </td>
                       <td className="px-6 py-4">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 dark:bg-primary-900/20 text-primary-800 dark:text-primary-200">
-                          Level {category.level}
+                          Level {category.level || 0}
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="text-sm text-light-text-secondary dark:text-dark-text-secondary">
-                          {category.icon || '-'}
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          category.isActive 
+                            ? 'bg-success-100 text-success-800 dark:bg-success-900/20 dark:text-success-300'
+                            : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
+                        }`}>
+                          {category.isActive ? 'Active' : 'Inactive'}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right">
@@ -490,11 +501,11 @@ const CategoryManagement = () => {
               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
               placeholder="Brief description of this category"
               rows={3}
-              maxLength={1000}
+              maxLength={500}
               className="w-full px-4 py-2.5 bg-gray-50 dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-light-text dark:text-dark-text placeholder-gray-400 resize-none"
             />
             <p className="text-xs text-gray-500 mt-1">
-              {formData.description.length} / 1000 characters
+              {formData.description.length} / 500 characters
             </p>
           </div>
 
@@ -504,8 +515,8 @@ const CategoryManagement = () => {
               Parent Category (Optional)
             </label>
             <select
-              value={formData.parentId}
-              onChange={(e) => setFormData(prev => ({ ...prev, parentId: e.target.value }))}
+              value={formData.parentCategory}
+              onChange={(e) => setFormData(prev => ({ ...prev, parentCategory: e.target.value }))}
               className="w-full px-4 py-2.5 bg-gray-50 dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-light-text dark:text-dark-text"
             >
               <option value="">None (Top-level category)</option>
@@ -526,9 +537,23 @@ const CategoryManagement = () => {
               type="text"
               value={formData.icon}
               onChange={(e) => setFormData(prev => ({ ...prev, icon: e.target.value }))}
-              placeholder="e.g., brain-circuit, code, briefcase"
+              placeholder="e.g., brain, code, briefcase"
               className="w-full px-4 py-2.5 bg-gray-50 dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-light-text dark:text-dark-text placeholder-gray-400"
             />
+          </div>
+
+           {/* Active Status */}
+           <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="isActive"
+              checked={formData.isActive}
+              onChange={(e) => setFormData(prev => ({ ...prev, isActive: e.target.checked }))}
+              className="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+            />
+            <label htmlFor="isActive" className="ml-2 text-sm font-medium text-light-text dark:text-dark-text">
+              Active (Visible to users)
+            </label>
           </div>
 
           {/* Action Buttons */}
@@ -576,7 +601,8 @@ const CategoryManagement = () => {
                   Warning: This action cannot be undone
                 </p>
                 <p className="text-sm text-warning-700 dark:text-warning-300 mt-1">
-                  Deleting this category may affect associated jobs and subcategories.
+                  Deleting this category will remove it from the system.
+                  If it has subcategories or active jobs, you may need to resolve those first.
                 </p>
               </div>
             </div>
@@ -596,21 +622,14 @@ const CategoryManagement = () => {
                 <div>
                   <span className="text-sm text-light-text-secondary dark:text-dark-text-secondary">Level: </span>
                   <span className="text-sm font-medium text-light-text dark:text-dark-text">
-                    {deleteModal.category.level}
+                    {deleteModal.category.level || 0}
                   </span>
                 </div>
-                {deleteModal.category.description && (
-                  <div>
-                    <span className="text-sm text-light-text-secondary dark:text-dark-text-secondary">Description: </span>
-                    <span className="text-sm font-medium text-light-text dark:text-dark-text">
-                      {deleteModal.category.description}
-                    </span>
-                  </div>
-                )}
               </div>
             </div>
 
-            {/* Force Delete Option */}
+            {/* Force Delete Option (Only visual for now as API handles strict checks) */}
+            {/* Note: The API delete endpoint supports force=true/false. We expose it here. */}
             <div className="flex items-start space-x-3">
               <input
                 type="checkbox"
@@ -620,9 +639,9 @@ const CategoryManagement = () => {
                 className="mt-1 w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
               />
               <label htmlFor="forceDelete" className="text-sm text-light-text dark:text-dark-text">
-                <span className="font-medium">Force delete</span> - Delete even if category has subcategories or associated jobs
+                <span className="font-medium">Force delete</span>
                 <span className="block text-xs text-warning-600 dark:text-warning-400 mt-1">
-                  Warning: This will permanently remove all data associated with this category
+                   Try to delete ignoring checks (Use with caution).
                 </span>
               </label>
             </div>

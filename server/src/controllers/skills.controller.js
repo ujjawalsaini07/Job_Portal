@@ -169,7 +169,7 @@ export const updateSkill = async (req, res) => {
  */
 export const deleteSkill = async (req, res) => {
   try {
-    const skill = await Skill.findByIdAndDelete(req.params.id);
+    const skill = await Skill.findById(req.params.id);
 
     if (!skill) {
       return res.status(404).json({
@@ -177,6 +177,19 @@ export const deleteSkill = async (req, res) => {
         message: "Skill not found",
       });
     }
+
+    // Check if skill is being used in any jobs
+    const Job = mongoose.model("Job");
+    const jobCount = await Job.countDocuments({ requiredSkills: skill._id });
+
+    if (jobCount > 0) {
+      return res.status(409).json({
+        success: false,
+        message: `Skill is in use by ${jobCount} job(s) and cannot be deleted`,
+      });
+    }
+
+    await skill.deleteOne();
 
     res.status(200).json({
       success: true,

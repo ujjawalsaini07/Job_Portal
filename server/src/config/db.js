@@ -1,43 +1,50 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 
-const MAX_RETRIES = 5;
-const INITIAL_RETRY_DELAY = 2000;
+const MONGO_URI = process.env.NODE_ENV === "production"
+  ? process.env.MONGO_URI
+  : process.env.MONGO_URI_DEV;
+
+if (!MONGO_URI) {
+  throw new Error(
+    'Please define the MONGO_URI environment variable inside .env.local'
+  );
+}
+
+/**
+ * Global is used here to maintain a cached connection across hot reloads
+ * in development. This prevents connections growing exponentially
+ * during API Route usage.
+ */
+let cached = global.mongoose;
+
+if (!cached) {
+  cached = global.mongoose = { conn: null, promise: null };
+}
 
 async function connectDB() {
-  let retries = MAX_RETRIES;
-  let currentDelay = INITIAL_RETRY_DELAY;
-  console.log(process.env.NODE_ENV);
-  const mongoURI =
-    process.env.NODE_ENV === "production"
-      ? process.env.MONGO_URI
-      : process.env.MONGO_URI_DEV;
-
-  if (!mongoURI) {
-    console.error("Mongo URI is missing for this environment");
-    process.exit(1);
+  if (cached.conn) {
+    return cached.conn;
   }
 
-  while (retries > 0) {
-    try {
-      await mongoose.connect(mongoURI);
-      console.log("MongoDB connected successfully");
-      return;
-    } catch (err) {
-      retries -= 1;
+  if (!cached.promise) {
+    const opts = {
+      bufferCommands: false, // Disable buffering to fail fast if no connection
+    };
 
-      console.error(`MongoDB connection failed. ${retries} retries left.`);
-      console.error(`Error: ${err.message}`);
-
-      if (retries === 0) {
-        console.error("Max retries reached. Exiting application...");
-        process.exit(1);
-      }
-
-      console.log(`Waiting ${currentDelay / 1000} seconds before retrying...`);
-      await new Promise((resolve) => setTimeout(resolve, currentDelay));
-      currentDelay *= 2;
-    }
+    cached.promise = mongoose.connect(MONGO_URI, opts).then((mongoose) => {
+      console.log('✅ New MongoDB Connection Established');
+      return mongoose;
+    });
   }
+
+  try {
+    cached.conn = await cached.promise;
+  } catch (e) {
+    cached.promise = null;
+    throw e;
+  }
+
+  return cached.conn;
 }
 
 export default connectDB;

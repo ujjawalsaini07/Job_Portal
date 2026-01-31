@@ -83,8 +83,8 @@ app.get("/health", (req, res) => {
 app.use("/api/v1/auth", authRoutes); // auth routes
 
 app.use("/api/v1/users", userRouter); // user routes
-app.use("/api/v1/jobseekers", jobseekerRoutes); // jobseeker routes
-app.use("/api/v1/recruiters", recruiterRoutes); // recruiter routes
+// app.use("/api/v1/jobseekers", jobseekerRoutes); // jobseeker routes
+// app.use("/api/v1/recruiters", recruiterRoutes); // recruiter routes
 app.use("/api/v1/admin/recruiters", adminRecruiterRoutes); // adminrecruiter routes
 app.use("/api/v1/jobs", jobRoutes); // job routes
 app.use("/api/v1/admin/jobs", adminJobRoutes); // admin job routes

@@ -78,7 +78,7 @@ app.get("/health", (req, res) => {
   });
 });
 
-app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+// app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 app.use("/api/v1/auth", authRoutes); // auth routes
 

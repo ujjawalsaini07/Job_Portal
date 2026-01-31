@@ -2,11 +2,11 @@
   "rewrites": [
     { 
       "source": "/api/(.*)", 
-      "destination": "https://smarthire-nao4klbny-ujjawal-sainis-projects.vercel.app/api/$1" 
+      "destination": "https://smarthire-one.vercel.app/api/$1" 
     },
     { 
       "source": "/uploads/(.*)", 
-      "destination": "https://smarthire-nao4klbny-ujjawal-sainis-projects.vercel.app/uploads/$1" 
+      "destination": "https://smarthire-one.vercel.app/uploads/$1" 
     }
   ]
 }

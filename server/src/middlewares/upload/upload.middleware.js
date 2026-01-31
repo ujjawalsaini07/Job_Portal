@@ -2,24 +2,24 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 
-// Ensure upload directories exist
-const createUploadDirs = () => {
-  const dirs = [
-    "./uploads/resumes",
-    "./uploads/videos",
-    "./uploads/portfolio",
-    "./uploads/company-images", // Added company images directory here
-  ];
+// // Ensure upload directories exist
+// const createUploadDirs = () => {
+//   const dirs = [
+//     "./uploads/resumes",
+//     "./uploads/videos",
+//     "./uploads/portfolio",
+//     "./uploads/company-images", // Added company images directory here
+//   ];
 
-  dirs.forEach((dir) => {
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-  });
-};
+//   dirs.forEach((dir) => {
+//     if (!fs.existsSync(dir)) {
+//       fs.mkdirSync(dir, { recursive: true });
+//     }
+//   });
+// };
 
-// Initialize directories immediately
-createUploadDirs();
+// // Initialize directories immediately
+// createUploadDirs();
 
 // --- STORAGE CONFIGURATIONS ---
 

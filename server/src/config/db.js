@@ -23,7 +23,13 @@ if (!cached) {
 
 async function connectDB() {
   if (cached.conn) {
-    return cached.conn;
+    if (cached.conn.connection.readyState === 1) {
+      return cached.conn;
+    }
+    console.log("⚠️ Cached connection is not ready. Reconnecting...");
+    // If the cached connection is not ready, we clear it and let the logic below act
+    cached.conn = null;
+    cached.promise = null;
   }
 
   if (!cached.promise) {

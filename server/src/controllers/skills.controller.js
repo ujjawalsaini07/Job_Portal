@@ -56,7 +56,7 @@ export const searchSkills = async (req, res) => {
 
     const activeOnly = includeInactive !== "true";
 
-    // Use the robust static search method defined in Schema
+    // Use the updated search method that returns exact matches first
     const skills = await Skill.searchSkills(q, activeOnly);
 
     res.status(200).json({

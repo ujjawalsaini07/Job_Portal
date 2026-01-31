@@ -9,8 +9,8 @@ const Sidebar = ({ links = [], isMobile = false, onClose, isCollapsed = false, o
   const navigate = useNavigate();
 
   const handleLogout = () => {
+    navigate('/');
     logout();
-    navigate('/login');
   };
 
   const getRoleName = () => {

@@ -241,7 +241,7 @@ const JobSeekerProfileSchema = new mongoose.Schema(
         {
           type: String,
           enum: {
-            values: ["full-time", "part-time", "contract", "internship"],
+            values: ["full-time", "part-time", "contract", "internship","freelance"],
             message: "{VALUE} is not a valid job type",
           },
         },

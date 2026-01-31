@@ -7,7 +7,7 @@ export const jobSeekerApi = {
   
   // Get my profile
   getMyProfile: async () => {
-    const response = await api.get('/jobseekers/profile');
+    const response = await api.get(`/jobseekers/profile?_t=${new Date().getTime()}`);
     return response.data;
   },
 
@@ -23,6 +23,22 @@ export const jobSeekerApi = {
     return response.data;
   },
 
+  // Upload profile picture
+  uploadProfilePicture: async (file) => {
+    const formData = new FormData();
+    formData.append('image', file);
+    const response = await api.post('/jobseekers/profile/profile-picture', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
+  // Delete profile picture
+  deleteProfilePicture: async () => {
+    const response = await api.delete('/jobseekers/profile/profile-picture');
+    return response.data;
+  },
+
   // ============================================
   // Resume & Portfolio Management
   // ============================================
@@ -30,7 +46,7 @@ export const jobSeekerApi = {
   // Upload resume
   uploadResume: async (file) => {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('resume', file);
     const response = await api.post('/jobseekers/profile/resume', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
@@ -46,7 +62,7 @@ export const jobSeekerApi = {
   // Upload video resume
   uploadVideoResume: async (file) => {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('video', file);
     const response = await api.post('/jobseekers/profile/video-resume', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
@@ -69,13 +85,49 @@ export const jobSeekerApi = {
     if (portfolioData.projectUrl) {
       formData.append('projectUrl', portfolioData.projectUrl);
     }
-    if (portfolioData.file) {
-      formData.append('file', portfolioData.file);
+    if (portfolioData.portfolioFile) {
+      formData.append('portfolioFile', portfolioData.portfolioFile);
     }
     const response = await api.post('/jobseekers/profile/portfolio', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data;
+  },
+
+  // Delete portfolio item
+  deletePortfolioItem: async (itemId) => {
+    const response = await api.delete(`/jobseekers/profile/portfolio/${itemId}`);
+    return response.data;
+  },
+
+  // ============================================
+  // Portfolio Management
+  // ============================================
+
+  // Add portfolio item
+  addPortfolioItem: async (portfolioData) => {
+    // Check if it's FormData (has file) or JSON
+    if (portfolioData instanceof FormData) {
+      const response = await api.post('/jobseekers/profile/portfolio', portfolioData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return response.data;
+    } else {
+      // If no file, we can ideally send JSON, but the endpoint might expect multipart
+      // Let's safe-guard by converting to FormData if it's not
+      const formData = new FormData();
+      Object.keys(portfolioData).forEach(key => {
+        if (Array.isArray(portfolioData[key])) {
+          portfolioData[key].forEach(val => formData.append(key, val));
+        } else {
+          formData.append(key, portfolioData[key]);
+        }
+      });
+      const response = await api.post('/jobseekers/profile/portfolio', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return response.data;
+    }
   },
 
   // Delete portfolio item

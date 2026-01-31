@@ -88,4 +88,6 @@ jobseekerRouter.get(
   getJobSeekerProfileById
 );
 
+
+
 export default jobseekerRouter;

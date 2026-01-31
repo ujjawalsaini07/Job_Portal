@@ -5,6 +5,8 @@ import Navbar from '@components/layout/Navbar';
 import JobSearchBar from '@components/common/JobSearchBar';
 import JobCard from '@components/jobs/JobCard';
 import FilterSection from '@components/jobs/FilterSection';
+import SkillSearchFilter from '@components/jobs/SkillSearchFilter';
+import CategorySearchFilter from '@components/jobs/CategorySearchFilter';
 import Button from '@components/common/Button';
 import { publicApi } from '@api/publicApi';
 import { toast } from 'react-hot-toast';
@@ -26,7 +28,8 @@ const JobListings = () => {
   const [filters, setFilters] = useState({
     jobType: [],
     location: [],
-    skills: [],
+    skills: [],          // Array of skill objects { _id, name }
+    category: null,       // Category object { _id, name }
     salaryRange: null,
     experienceLevel: [],
   });
@@ -49,7 +52,7 @@ const JobListings = () => {
       { value: 'onsite', label: 'On-site' },
     ],
     experienceLevel: [
-      { value: 'entry', label: 'Entry Level' },
+      { value:'entry', label: 'Entry Level' },
       { value: 'mid', label: 'Mid Level' },
       { value: 'senior', label: 'Senior Level' },
       { value: 'lead', label: 'Lead' },
@@ -84,7 +87,8 @@ const JobListings = () => {
         sortBy: sortBy,
         // Add filters
         ...(filters.jobType.length > 0 && { employmentType: filters.jobType.join(',') }),
-        ...(filters.skills.length > 0 && { skills: filters.skills.join(',') }),
+        ...(filters.skills.length > 0 && { skills: filters.skills.map(s => s._id).join(',') }),
+        ...(filters.category && { category: filters.category._id }),
         ...(filters.experienceLevel.length > 0 && { experienceLevel: filters.experienceLevel.join(',') }),
         ...(filters.salaryRange && {
           salaryMin: filters.salaryRange.split('-')[0],
@@ -99,7 +103,7 @@ const JobListings = () => {
         currentPage: response.currentPage || 1,
         totalPages: response.totalPages || 1,
         totalJobs: response.totalJobs || 0,
-        limit: response.limit || 12, // limit might not be in response, use current or default
+        limit: response.limit || 12,
       });
     } catch (error) {
       console.error('Error fetching jobs:', error);
@@ -134,6 +138,7 @@ const JobListings = () => {
       jobType: [],
       location: [],
       skills: [],
+      category: null,
       salaryRange: null,
       experienceLevel: [],
     });
@@ -144,6 +149,7 @@ const JobListings = () => {
       filters.jobType.length > 0 ||
       filters.location.length > 0 ||
       filters.skills.length > 0 ||
+      filters.category !== null ||
       filters.salaryRange !== null ||
       filters.experienceLevel.length > 0
     );
@@ -177,6 +183,29 @@ const JobListings = () => {
                     Clear all
                   </button>
                 )}
+              </div>
+
+              {/* Skills Filter - Moved to top */}
+              <div className="border-b border-light-border dark:border-dark-border pb-4 mb-4">
+                <h3 className="text-sm font-semibold text-light-text dark:text-dark-text mb-3">
+                  Skills
+                </h3>
+                <SkillSearchFilter
+                  selectedSkills={filters.skills}
+                  onChange={(skills) => handleFilterChange('skills', skills)}
+                  maxSelections={10}
+                />
+              </div>
+
+              {/* Category Filter - Moved to top */}
+              <div className="border-b border-light-border dark:border-dark-border pb-4 mb-4">
+                <h3 className="text-sm font-semibold text-light-text dark:text-dark-text mb-3">
+                  Category
+                </h3>
+                <CategorySearchFilter
+                  selectedCategory={filters.category}
+                  onChange={(category) => handleFilterChange('category', category)}
+                />
               </div>
 
               {/* Job Type Filter */}
@@ -259,81 +288,87 @@ const JobListings = () => {
               <div className="flex items-center justify-center py-20">
                 <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
               </div>
-            ) : jobs.length > 0 ? (
+            ) : (
               <>
-                <div className="grid gap-6 mb-8">
-                  {jobs.map((job) => (
-                    <JobCard key={job._id} job={job} />
-                  ))}
-                </div>
+                {jobs.length > 0 ? (
+                  <>
+                    <div className="grid gap-6 mb-8">
+                      {jobs.map((job) => (
+                        <JobCard key={job._id} job={job} />
+                      ))}
+                    </div>
 
-                {/* Pagination */}
-                {pagination.totalPages > 1 && (
-                  <div className="flex items-center justify-center space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handlePageChange(pagination.currentPage - 1)}
-                      disabled={pagination.currentPage === 1}
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                    </Button>
+                    {/* Pagination */}
+                    {pagination.totalPages > 1 && (
+                      <div className="flex items-center justify-center space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handlePageChange(pagination.currentPage - 1)}
+                          disabled={pagination.currentPage === 1}
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </Button>
 
-                    {[...Array(pagination.totalPages)].map((_, index) => {
-                      const page = index + 1;
-                      // Show first, last, current, and adjacent pages
-                      if (
-                        page === 1 ||
-                        page === pagination.totalPages ||
-                        (page >= pagination.currentPage - 1 && page <= pagination.currentPage + 1)
-                      ) {
-                        return (
-                          <Button
-                            key={page}
-                            variant={pagination.currentPage === page ? 'primary' : 'outline'}
-                            size="sm"
-                            onClick={() => handlePageChange(page)}
-                          >
-                            {page}
-                          </Button>
-                        );
-                      } else if (
-                        page === pagination.currentPage - 2 ||
-                        page === pagination.currentPage + 2
-                      ) {
-                        return <span key={page} className="px-2">...</span>;
-                      }
-                      return null;
-                    })}
+                        {[...Array(pagination.totalPages)].map((_, index) => {
+                          const page = index + 1;
+                          // Show first, last, current, and adjacent pages
+                          if (
+                            page === 1 ||
+                            page === pagination.totalPages ||
+                            (page >= pagination.currentPage - 1 && page <= pagination.currentPage + 1)
+                          ) {
+                            return (
+                              <Button
+                                key={page}
+                                variant={pagination.currentPage === page ? 'primary' : 'outline'}
+                                size="sm"
+                                onClick={() => handlePageChange(page)}
+                              >
+                                {page}
+                              </Button>
+                            );
+                          } else if (
+                            page === pagination.currentPage - 2 ||
+                            page === pagination.currentPage + 2
+                          ) {
+                            return <span key={page} className="px-2">...</span>;
+                          }
+                          return null;
+                        })}
 
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handlePageChange(pagination.currentPage + 1)}
-                      disabled={pagination.currentPage === pagination.totalPages}
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handlePageChange(pagination.currentPage + 1)}
+                          disabled={pagination.currentPage === pagination.totalPages}
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-center py-20">
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 dark:bg-dark-bg-tertiary mb-4">
+                      <Filter className="w-8 h-8 text-gray-400" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-light-text dark:text-dark-text mb-2">
+                      No jobs found
+                    </h3>
+                    <p className="text-light-text-secondary dark:text-dark-text-secondary mb-6">
+                      Try adjusting your filters or search terms
+                    </p>
+                    {hasActiveFilters() && (
+                      <div className="flex justify-center">
+                        <Button onClick={clearAllFilters} variant="outline">
+                          Clear all filters
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
               </>
-            ) : (
-              <div className="text-center py-20">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 dark:bg-dark-bg-tertiary mb-4">
-                  <Filter className="w-8 h-8 text-gray-400" />
-                </div>
-                <h3 className="text-xl font-semibold text-light-text dark:text-dark-text mb-2">
-                  No jobs found
-                </h3>
-                <p className="text-light-text-secondary dark:text-dark-text-secondary mb-6">
-                  Try adjusting your filters or search terms
-                </p>
-                {hasActiveFilters() && (
-                  <Button onClick={clearAllFilters} variant="outline">
-                    Clear all filters
-                  </Button>
-                )}
-              </div>
             )}
           </div>
         </div>
@@ -371,6 +406,29 @@ const JobListings = () => {
                   Clear all filters
                 </button>
               )}
+
+              {/* Skills Filter - Moved to top */}
+              <div className="border-b border-light-border dark:border-dark-border pb-4 mb-4">
+                <h3 className="text-sm font-semibold text-light-text dark:text-dark-text mb-3">
+                  Skills
+                </h3>
+                <SkillSearchFilter
+                  selectedSkills={filters.skills}
+                  onChange={(skills) => handleFilterChange('skills', skills)}
+                  maxSelections={10}
+                />
+              </div>
+
+              {/* Category Filter - Moved to top */}
+              <div className="border-b border-light-border dark:border-dark-border pb-4 mb-4">
+                <h3 className="text-sm font-semibold text-light-text dark:text-dark-text mb-3">
+                  Category
+                </h3>
+                <CategorySearchFilter
+                  selectedCategory={filters.category}
+                  onChange={(category) => handleFilterChange('category', category)}
+                />
+              </div>
 
               <FilterSection
                 title="Job Type"

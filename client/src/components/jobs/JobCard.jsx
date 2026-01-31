@@ -7,12 +7,15 @@ import Badge from '@components/common/Badge';
 import Button from '@components/common/Button';
 import useAuthStore from '@store/authStore';
 import { jobSeekerApi } from '@api/jobSeekerApi';
+import { publicApi } from '@api/publicApi';
+import ViewCountBadge from '@components/jobs/ViewCountBadge';
 
 const JobCard = ({ job }) => {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuthStore();
   const [isExpanded, setIsExpanded] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [hasTrackedView, setHasTrackedView] = useState(false);
 
   const formatSalary = (min, max) => {
     if (!min && !max) return 'Not specified';
@@ -102,6 +105,26 @@ const JobCard = ({ job }) => {
     }
   };
 
+  // Track view when card is expanded (authenticated users only)
+  const handleCardExpand = async () => {
+    const wasExpanded = isExpanded;
+    setIsExpanded(!isExpanded);
+    
+    // Track view on first expand for authenticated users only
+    if (!wasExpanded && isAuthenticated && !hasTrackedView) {
+      try {
+        await publicApi.trackJobView(job._id, {
+          ipAddress: 'client', // Backend will extract real IP
+          userAgent: navigator.userAgent
+        });
+        setHasTrackedView(true);
+      } catch (error) {
+        console.error('Failed to track view:', error);
+        // Silent failure - don't interrupt user experience
+      }
+    }
+  };
+
   // Hide action buttons for non-candidates (Recruiters/Admins)
   const showActions = !isAuthenticated || user?.role === 'candidate';
 
@@ -109,11 +132,16 @@ const JobCard = ({ job }) => {
     <Card
       className={`p-6 transition-all duration-300 border-l-4 ${
         isExpanded ? 'border-l-primary-600 shadow-md ring-1 ring-primary-100 dark:ring-primary-900' : 'border-l-transparent hover:shadow-lg hover:border-primary-200 dark:hover:border-primary-800'
-      } cursor-default`}
-      onClick={() => setIsExpanded(!isExpanded)}
+      } cursor-default relative`}
+      onClick={handleCardExpand}
     >
+      {/* View Count Badge - Positioned in top-right */}
+      <div className="absolute top-4 right-4 z-10" onClick={(e) => e.stopPropagation()}>
+        <ViewCountBadge count={job.views || 0} size="sm" />
+      </div>
+
       <div className="flex items-start justify-between mb-4 cursor-pointer">
-        <div className="flex items-start space-x-4 flex-1">
+        <div className="flex items-start space-x-4 flex-1 pr-20">
           {/* Company Logo */}
           {companyLogo ? (
             <img
@@ -152,12 +180,19 @@ const JobCard = ({ job }) => {
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Expand/Collapse Indicator */}
+      {/* Expand/Collapse Indicator - Moved to bottom */}
+      <div className="flex items-center justify-center mt-2">
         <button 
-          className="p-2 text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+          className="px-4 py-1 text-sm text-gray-500 hover:text-primary-600 dark:hover:text-primary-400 transition-colors flex items-center space-x-1"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleCardExpand();
+          }}
         >
-          {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+          <span>{isExpanded ? 'Show less' : 'Show more'}</span>
+          {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </button>
       </div>
 

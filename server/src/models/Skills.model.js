@@ -85,20 +85,90 @@ SkillSchema.statics.getByCategory = function (category, activeOnly = true) {
   return this.find(query).sort({ name: 1 });
 };
 
-// Static method to search skills
-SkillSchema.statics.searchSkills = function (searchTerm, activeOnly = true) {
-  const query = {
-    $text: { $search: searchTerm },
-  };
 
-  if (activeOnly) {
-    query.isActive = true;
+// Static method to search skills with subsequence matching
+SkillSchema.statics.searchSkills = async function (searchTerm, activeOnly = true) {
+  const normalizedTerm = searchTerm.trim().toLowerCase();
+  
+  if (!normalizedTerm) {
+    return [];
   }
-
-  return this.find(query, { score: { $meta: "textScore" } }).sort({
-    score: { $meta: "textScore" },
+  
+  const baseQuery = activeOnly ? { isActive: true } : {};
+  
+  // Get all skills from database
+  const allSkills = await this.find(baseQuery).lean();
+  
+  // Filter skills that match the subsequence
+  const matchedSkills = allSkills.filter(skill => {
+    return isSubsequence(normalizedTerm, skill.name);
   });
+  
+  // Sort by match quality
+  matchedSkills.sort((a, b) => {
+    const aScore = getMatchScore(normalizedTerm, a.name);
+    const bScore = getMatchScore(normalizedTerm, b.name);
+    
+    // Higher score first, then alphabetically
+    if (bScore !== aScore) {
+      return bScore - aScore;
+    }
+    return a.name.localeCompare(b.name);
+  });
+  
+  return matchedSkills;
 };
+
+// Helper function to check if search term is a subsequence of skill name
+// function isSubsequence(searchTerm, skillName) {
+//   let searchIndex = 0;
+  
+//   for (let i = 0; i < skillName.length && searchIndex < searchTerm.length; i++) {
+//     if (skillName[i] === searchTerm[searchIndex]) {
+//       searchIndex++;
+//     }
+//   }
+  
+//   return searchIndex === searchTerm.length;
+// }
+
+// // Helper function to calculate match score (higher is better)
+// function getMatchScore(searchTerm, skillName) {
+//   // Exact match gets highest score
+//   if (skillName === searchTerm) {
+//     return 1000;
+//   }
+  
+//   // Starts with search term
+//   if (skillName.startsWith(searchTerm)) {
+//     return 500;
+//   }
+  
+//   // Contains search term consecutively
+//   if (skillName.includes(searchTerm)) {
+//     return 100;
+//   }
+  
+//   // Subsequence match
+//   // Calculate how close together the matching characters are
+//   let searchIndex = 0;
+//   let lastMatchIndex = -1;
+//   let totalDistance = 0;
+  
+//   for (let i = 0; i < skillName.length && searchIndex < searchTerm.length; i++) {
+//     if (skillName[i] === searchTerm[searchIndex]) {
+//       if (lastMatchIndex !== -1) {
+//         totalDistance += (i - lastMatchIndex - 1);
+//       }
+//       lastMatchIndex = i;
+//       searchIndex++;
+//     }
+//   }
+  
+//   // Lower total distance = better match (closer characters)
+//   // Return a score between 1-99 based on compactness
+//   return Math.max(1, 99 - totalDistance);
+// }
 
 // Static method to find or create skill
 SkillSchema.statics.findOrCreate = async function (skillName, category = "other") {
@@ -175,5 +245,58 @@ SkillSchema.pre("save", function () {
 // Ensure virtuals are included in JSON output
 SkillSchema.set("toJSON", { virtuals: true });
 SkillSchema.set("toObject", { virtuals: true });
+
+
+
+
+
+
+// Helper function to check if search term is a subsequence of skill name
+function isSubsequence(searchTerm, skillName) {
+  let searchIndex = 0;
+  
+  for (let i = 0; i < skillName.length && searchIndex < searchTerm.length; i++) {
+    if (skillName[i] === searchTerm[searchIndex]) {
+      searchIndex++;
+    }
+  }
+  
+  return searchIndex === searchTerm.length;
+}
+
+// Helper function to calculate match score (higher is better)
+function getMatchScore(searchTerm, skillName) {
+  // Exact match gets highest score
+  if (skillName === searchTerm) {
+    return 1000;
+  }
+  
+  // Starts with search term
+  if (skillName.startsWith(searchTerm)) {
+    return 500;
+  }
+  
+  // Contains search term consecutively
+  if (skillName.includes(searchTerm)) {
+    return 100;
+  }
+  
+  // Subsequence match - calculate compactness
+  let searchIndex = 0;
+  let lastMatchIndex = -1;
+  let totalDistance = 0;
+  
+  for (let i = 0; i < skillName.length && searchIndex < searchTerm.length; i++) {
+    if (skillName[i] === searchTerm[searchIndex]) {
+      if (lastMatchIndex !== -1) {
+        totalDistance += (i - lastMatchIndex - 1);
+      }
+      lastMatchIndex = i;
+      searchIndex++;
+    }
+  }
+  
+  return Math.max(1, 99 - totalDistance);
+}
 
 export default mongoose.model("Skill", SkillSchema);

@@ -1,14 +1,24 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, MapPin } from 'lucide-react';
 import Button from '@components/common/Button';
 
 const JobSearchBar = ({ className = '', variant = 'default' }) => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  
   const [searchData, setSearchData] = useState({
-    keyword: '',
-    location: '',
+    keyword: searchParams.get('keyword') || '',
+    location: searchParams.get('location') || '',
   });
+
+  // Sync with URL params
+  useEffect(() => {
+    setSearchData({
+      keyword: searchParams.get('keyword') || '',
+      location: searchParams.get('location') || '',
+    });
+  }, [searchParams]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -47,7 +57,8 @@ const JobSearchBar = ({ className = '', variant = 'default' }) => {
             placeholder="Job title, keywords, or company"
             value={searchData.keyword}
             onChange={(e) => setSearchData({ ...searchData, keyword: e.target.value })}
-            className="flex-1 bg-transparent border-none focus:outline-none text-light-text dark:text-dark-text placeholder-gray-400 text-base"
+            className="flex-1 bg-transparent border-none outline-none ring-0 focus:ring-0 focus:outline-none focus:border-none focus-visible:ring-0 text-light-text dark:text-dark-text placeholder-gray-400 text-base"
+            style={{ boxShadow: 'none' }}
           />
         </div>
 
@@ -59,7 +70,8 @@ const JobSearchBar = ({ className = '', variant = 'default' }) => {
             placeholder="City, state, or remote"
             value={searchData.location}
             onChange={(e) => setSearchData({ ...searchData, location: e.target.value })}
-            className="flex-1 bg-transparent border-none focus:outline-none text-light-text dark:text-dark-text placeholder-gray-400 text-base"
+            className="flex-1 bg-transparent border-none outline-none ring-0 focus:ring-0 focus:outline-none focus:border-none focus-visible:ring-0 text-light-text dark:text-dark-text placeholder-gray-400 text-base"
+            style={{ boxShadow: 'none' }}
           />
         </div>
 

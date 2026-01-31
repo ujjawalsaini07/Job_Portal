@@ -22,19 +22,21 @@ if (!cached) {
 }
 
 async function connectDB() {
-  if (cached.conn) {
-    if (cached.conn.connection.readyState === 1) {
-      return cached.conn;
-    }
-    console.log("⚠️ Cached connection is not ready. Reconnecting...");
-    // If the cached connection is not ready, we clear it and let the logic below act
-    cached.conn = null;
+  // Check the current Mongoose state directly
+  if (mongoose.connection.readyState === 1) {
+    return mongoose;
+  }
+
+  // If disconnected (0) or uninitialized (99), reset cache
+  if (mongoose.connection.readyState === 0 || mongoose.connection.readyState === 99) {
+    console.log("⚠️ MongoDB State is", mongoose.connection.readyState, "- Starting new connection...");
     cached.promise = null;
+    cached.conn = null;
   }
 
   if (!cached.promise) {
     const opts = {
-      bufferCommands: false, // Disable buffering to fail fast if no connection
+      bufferCommands: false,
     };
 
     cached.promise = mongoose.connect(MONGO_URI, opts).then((mongoose) => {
@@ -47,6 +49,7 @@ async function connectDB() {
     cached.conn = await cached.promise;
   } catch (e) {
     cached.promise = null;
+    console.error("❌ MongoDB Connection Error:", e);
     throw e;
   }
 

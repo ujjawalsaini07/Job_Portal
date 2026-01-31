@@ -70,6 +70,7 @@ app.use(express.urlencoded({ limit: "10mb", extended: true }));
 app.use(cookieParser());
 
 import mongoose from "mongoose";
+import connectDB from "./config/db.js";
 
 // health check api
 app.get("/health", (req, res) => {
@@ -90,6 +91,16 @@ app.get("/db-check", async (req, res) => {
       99: "uninitialized",
     };
     
+    // Attempt reconnection if disconnected
+    if (mongoose.connection.readyState === 0) {
+      console.log("Reconnecting in /db-check...");
+      try {
+        await connectDB();
+      } catch (e) {
+        console.error("Reconnection failed:", e);
+      }
+    }
+
     // Attempt a lightweight command to ensure the connection is actually responsive
     // check if we can ping the database
     let isResponsive = false;

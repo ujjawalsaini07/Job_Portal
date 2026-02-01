@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, useParams } from 'react-router-dom';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { authApi } from '@api/authApi';
 import Card from '@components/common/Card';
@@ -7,8 +7,11 @@ import Button from '@components/common/Button';
 
 const VerifyEmail = () => {
     const [searchParams] = useSearchParams();
+    const { token: paramToken } = useParams();
     const navigate = useNavigate();
-    const token = searchParams.get('token');
+    
+    // Support both path param and query param
+    const token = paramToken || searchParams.get('token');
     
     const [status, setStatus] = useState('verifying'); // verifying, success, error
     const [message, setMessage] = useState('Verifying your email address...');

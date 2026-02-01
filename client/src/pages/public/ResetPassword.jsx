@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, useParams } from 'react-router-dom';
 import { Lock, ArrowRight } from 'lucide-react';
 import { authApi } from '@api/authApi';
 import Navbar from '@components/layout/Navbar';
@@ -12,8 +12,12 @@ import toast from 'react-hot-toast';
 const ResetPassword = () => {
     const { register, handleSubmit, watch, formState: { errors } } = useForm();
     const [searchParams] = useSearchParams();
+    const { token: paramToken } = useParams();
     const navigate = useNavigate();
-    const token = searchParams.get('token');
+    
+    // Support both path param (preferred) and query param
+    const token = paramToken || searchParams.get('token');
+    
     const [loading, setLoading] = useState(false);
 
     const onSubmit = async (data) => {

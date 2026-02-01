@@ -1,8 +1,8 @@
 import 'dotenv/config';
-import mongoose from 'mongoose';
+
 import app from "./src/app.js";
 import connectDB from "./src/config/db.js";
-import seedAdmin from "./src/utils/seedAdmin.js";
+
 
 // REMOVE the global 'isConnected' variable. It is dangerous in serverless.
 

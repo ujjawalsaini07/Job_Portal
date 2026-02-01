@@ -22,6 +22,7 @@ import analyticsRouter from "./routes/analytics.routes.js";
 import emailRouter from "./routes/email.routes.js";
 import { requestLogger } from "./config/logger.js";
 import { handleMulterError } from "./middlewares/upload/upload.middleware.js";
+import { dbConnectionMiddleware } from "./middlewares/db.middleware.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -72,7 +73,6 @@ app.use(cookieParser());
 import mongoose from "mongoose";
 import connectDB from "./config/db.js";
 
-// health check api
 app.get("/health", (req, res) => {
   res.status(200).json({
     success: true,
@@ -80,6 +80,9 @@ app.get("/health", (req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+// Apply DB Middleware globally for API routes
+app.use(dbConnectionMiddleware);
 
 app.get("/db-check", async (req, res) => {
   try {

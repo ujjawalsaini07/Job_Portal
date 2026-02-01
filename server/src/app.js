@@ -70,8 +70,7 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
 app.use(cookieParser());
 
-import mongoose from "mongoose";
-import connectDB from "./config/db.js";
+
 
 app.get("/health", (req, res) => {
   res.status(200).json({
@@ -84,55 +83,7 @@ app.get("/health", (req, res) => {
 // Apply DB Middleware globally for API routes
 app.use(dbConnectionMiddleware);
 
-app.get("/db-check", async (req, res) => {
-  try {
-    const states = {
-      0: "disconnected",
-      1: "connected",
-      2: "connecting",
-      3: "disconnecting",
-      99: "uninitialized",
-    };
-    
-    // Attempt reconnection if disconnected
-    if (mongoose.connection.readyState === 0) {
-      console.log("Reconnecting in /db-check...");
-      try {
-        await connectDB();
-      } catch (e) {
-        console.error("Reconnection failed:", e);
-      }
-    }
 
-    // Attempt a lightweight command to ensure the connection is actually responsive
-    // check if we can ping the database
-    let isResponsive = false;
-    if (mongoose.connection.readyState === 1) {
-        try {
-            await mongoose.connection.db.admin().ping();
-            isResponsive = true;
-        } catch (err) {
-            isResponsive = false;
-        }
-    }
-
-    res.status(200).json({
-      success: true,
-      message: "Database Connection Check",
-      connectionState: states[mongoose.connection.readyState] || "unknown",
-      readyState: mongoose.connection.readyState,
-      isResponsive: isResponsive,
-      host: mongoose.connection.host,
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false, 
-      message: "DB Check Failed", 
-      error: error.message 
-    });
-  }
-});
 
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
